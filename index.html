@@ -172,22 +172,45 @@
     color: rgba(245, 245, 240, 0.85);
   }
 
-  /* 回数管理(カウンター)のUI */
-  .counter-box {
+  /* 回数×セット数の設定UI(数字を大きく目立たせ、+/-は控えめに) */
+  .target-box {
     position: absolute;
-    top: 10px;
-    right: 10px;
+    top: 12px;
+    left: 50%;
+    transform: translateX(-50%);
     display: flex;
     align-items: center;
     gap: 8px;
-    background: rgba(0, 0, 0, 0.4);
-    backdrop-filter: blur(8px);
-    border-radius: 16px;
-    padding: 8px 10px;
+    background: rgba(0, 0, 0, 0.55);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(110, 231, 222, 0.4);
+    border-radius: 20px;
+    padding: 8px 18px;
   }
-  .count-display { text-align: center; min-width: 46px; }
-  .count-number { font-size: 20px; font-weight: 700; color: #6EE7DE; line-height: 1; }
-  .count-total { font-size: 10px; color: rgba(245, 245, 240, 0.5); margin-top: 2px; }
+  .stepper { display: flex; align-items: center; gap: 8px; }
+  .step-btn {
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    color: rgba(245, 245, 240, 0.7);
+    font-size: 14px;
+    line-height: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+  }
+  .step-value {
+    min-width: 38px;
+    text-align: center;
+    font-size: 32px;
+    font-weight: 800;
+    color: #6EE7DE;
+    line-height: 1;
+  }
+  .step-unit { font-size: 15px; font-weight: 500; color: rgba(245, 245, 240, 0.8); }
 
   /* 見本の「前へ/次へ」ナビゲーション */
   .sample-nav {
@@ -269,13 +292,19 @@
         <img id="sampleImg" src="" alt="見本画像">
         <div class="sample-label" id="sampleLabel">見本 1</div>
 
-        <div class="counter-box">
-          <button id="resetBtn" class="btn-control small">リセット</button>
-          <div class="count-display">
-            <div class="count-number" id="countNumber">0</div>
-            <div class="count-total">合計 <span id="totalNumber">0</span></div>
+        <div class="target-box">
+          <div class="stepper">
+            <button id="repsMinus" class="step-btn" aria-label="回数を減らす">−</button>
+            <span id="repsValue" class="step-value">5</span>
+            <button id="repsPlus" class="step-btn" aria-label="回数を増やす">＋</button>
           </div>
-          <button id="plusBtn" class="btn-control small active">+1</button>
+          <span class="step-unit">回 ×</span>
+          <div class="stepper">
+            <button id="setsMinus" class="step-btn" aria-label="セット数を減らす">−</button>
+            <span id="setsValue" class="step-value">2</span>
+            <button id="setsPlus" class="step-btn" aria-label="セット数を増やす">＋</button>
+          </div>
+          <span class="step-unit">セット</span>
         </div>
 
         <div class="sample-nav">
@@ -324,27 +353,31 @@
   const errorMessage     = document.getElementById('errorMessage');
 
   // ===== 見本画像の設定 =====
-  // ファイル名と表示ラベルをここで管理しています。
+  // ファイル名・表示ラベル・初期の回数(reps)とセット数(sets)をここで管理しています。
   // 画像を入れ替える場合は samples フォルダにファイルを置き、この配列も書き換えてください。
   // 拡張子は .jpg / .png / .gif が使えます（.gif はアニメーションもそのまま再生されます）。
   const SAMPLES = [
-    { file: 'samples/01.png', label: '見本 1' },
-    { file: 'samples/02.png', label: '見本 2' },
-    { file: 'samples/03.gif', label: '見本 3' }
+    { file: 'samples/01.png', label: '見本 1', reps: 5, sets: 2 },
+    { file: 'samples/02.png', label: '見本 2', reps: 5, sets: 2 },
+    { file: 'samples/03.gif', label: '見本 3', reps: 5, sets: 2 }
   ];
 
-  let sampleIndex = 0;                              // 今表示している見本の番号
-  let sampleCounts = new Array(SAMPLES.length).fill(0); // 見本ごとの実施回数
+  let sampleIndex = 0; // 今表示している見本の番号
+  // 見本ごとの回数・セット数(画面上の+/-ボタンでその場で調整できる)
+  let repsTargets = SAMPLES.map(s => s.reps);
+  let setsTargets = SAMPLES.map(s => s.sets);
 
   const sampleImg      = document.getElementById('sampleImg');
   const sampleLabel    = document.getElementById('sampleLabel');
   const positionText   = document.getElementById('positionText');
-  const countNumber    = document.getElementById('countNumber');
-  const totalNumber    = document.getElementById('totalNumber');
+  const repsValue      = document.getElementById('repsValue');
+  const setsValue      = document.getElementById('setsValue');
+  const repsMinus      = document.getElementById('repsMinus');
+  const repsPlus       = document.getElementById('repsPlus');
+  const setsMinus      = document.getElementById('setsMinus');
+  const setsPlus       = document.getElementById('setsPlus');
   const prevSampleBtn  = document.getElementById('prevSampleBtn');
   const nextSampleBtn  = document.getElementById('nextSampleBtn');
-  const plusBtn        = document.getElementById('plusBtn');
-  const resetBtn       = document.getElementById('resetBtn');
 
   // 見本画像エリアの表示内容を、現在の状態に合わせて描き直す関数
   function renderSample() {
@@ -353,9 +386,8 @@
     sampleImg.alt = current.label;
     sampleLabel.textContent = current.label;
     positionText.textContent = (sampleIndex + 1) + ' / ' + SAMPLES.length;
-    countNumber.textContent = sampleCounts[sampleIndex];
-    const total = sampleCounts.reduce((sum, n) => sum + n, 0);
-    totalNumber.textContent = total;
+    repsValue.textContent = repsTargets[sampleIndex];
+    setsValue.textContent = setsTargets[sampleIndex];
   }
 
   // ===== 状態を保持する変数 =====
@@ -436,15 +468,27 @@
     renderSample();
   });
 
-  // 今表示中の見本の実施回数を1増やす
-  plusBtn.addEventListener('click', () => {
-    sampleCounts[sampleIndex] += 1;
+  // 今表示中の見本の「回数」を1減らす(1回未満にはしない)
+  repsMinus.addEventListener('click', () => {
+    repsTargets[sampleIndex] = Math.max(1, repsTargets[sampleIndex] - 1);
     renderSample();
   });
 
-  // 今表示中の見本の実施回数を0に戻す(他の見本の回数は変わらない)
-  resetBtn.addEventListener('click', () => {
-    sampleCounts[sampleIndex] = 0;
+  // 今表示中の見本の「回数」を1増やす
+  repsPlus.addEventListener('click', () => {
+    repsTargets[sampleIndex] += 1;
+    renderSample();
+  });
+
+  // 今表示中の見本の「セット数」を1減らす(1セット未満にはしない)
+  setsMinus.addEventListener('click', () => {
+    setsTargets[sampleIndex] = Math.max(1, setsTargets[sampleIndex] - 1);
+    renderSample();
+  });
+
+  // 今表示中の見本の「セット数」を1増やす
+  setsPlus.addEventListener('click', () => {
+    setsTargets[sampleIndex] += 1;
     renderSample();
   });
 
