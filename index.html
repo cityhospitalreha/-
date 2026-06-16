@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<!-- viewport-fit=cover : iPadのノッチ/safe areaまで画面を使うための指定 -->
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
+<!-- ホーム画面に追加した時、Safariのアドレスバーなしでアプリのように開けるようにする指定 -->
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>表情ミラー</title>
+<style>
+  /* ===== 基本リセット ===== */
+  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+  html, body {
+    height: 100%;
+    background: #0b0e10;
+    color: #F5F5F0;
+    /* iPad(Safari)で読みやすい標準フォント。日本語はHiragino Sansが自動で使われる */
+    font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Hiragino Kaku Gothic ProN", sans-serif;
+    overflow: hidden;
+    -webkit-user-select: none;
+    user-select: none;
+  }
+
+  #app {
+    position: relative;
+    width: 100%;
+    height: 100vh;
+    height: 100dvh; /* iOS Safariのアドレスバー分を正しく考慮した高さ */
+    overflow: hidden;
+  }
+
+  [hidden] { display: none !important; }
+
+  /* ===== スタート画面 ===== */
+  #start-screen, #error-screen {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 18px;
+    padding: 32px;
+    text-align: center;
+    background: radial-gradient(circle at 50% 30%, #161b1e, #0b0e10);
+  }
+
+  .app-title {
+    font-size: 28px;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+  }
+
+  .app-desc {
+    font-size: 15px;
+    line-height: 1.7;
+    color: rgba(245, 245, 240, 0.65);
+    max-width: 320px;
+  }
+
+  .privacy-note {
+    font-size: 12px;
+    color: rgba(245, 245, 240, 0.4);
+    max-width: 280px;
+    line-height: 1.6;
+  }
+
+  .btn-primary {
+    background: linear-gradient(135deg, #6EE7DE, #4FC3BD);
+    color: #06201D;
+    font-weight: 600;
+    font-size: 17px;
+    border: none;
+    border-radius: 999px;
+    padding: 16px 44px;
+    min-height: 52px;
+    cursor: pointer;
+    box-shadow: 0 8px 24px rgba(110, 231, 222, 0.25);
+    transition: transform 0.15s ease;
+  }
+  .btn-primary:active { transform: scale(0.96); }
+
+  /* ===== カメラ画面 ===== */
+  #camera-screen { position: absolute; inset: 0; }
+
+  video#video {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    background: #000;
+  }
+  /* 前面カメラの時だけ左右反転して「鏡」にする */
+  video#video.mirrored { transform: scaleX(-1); }
+
+  .top-pill {
+    position: absolute;
+    top: calc(14px + env(safe-area-inset-top));
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(0, 0, 0, 0.35);
+    padding: 6px 18px;
+    border-radius: 999px;
+    font-size: 13px;
+    letter-spacing: 0.04em;
+    color: rgba(245, 245, 240, 0.85);
+  }
+
+  /* 顔の位置を合わせるための目安の楕円ガイド */
+  #guide-overlay {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
+  }
+  #guide-overlay .oval {
+    width: 56%;
+    max-width: 340px;
+    aspect-ratio: 3 / 4;
+    border: 2px dashed rgba(255, 255, 255, 0.55);
+    border-radius: 50%;
+  }
+
+  .controls {
+    position: absolute;
+    left: 0; right: 0; bottom: 0;
+    display: flex;
+    justify-content: center;
+    gap: 14px;
+    padding: 18px 16px calc(18px + env(safe-area-inset-bottom));
+    background: linear-gradient(to top, rgba(0, 0, 0, 0.55), rgba(0, 0, 0, 0));
+  }
+
+  .btn-control {
+    background: rgba(255, 255, 255, 0.12);
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    backdrop-filter: blur(8px);
+    color: #F5F5F0;
+    font-size: 14px;
+    font-weight: 500;
+    border-radius: 14px;
+    padding: 12px 18px;
+    min-height: 48px;
+    min-width: 92px;
+    cursor: pointer;
+  }
+  .btn-control.active {
+    background: rgba(110, 231, 222, 0.22);
+    border-color: #6EE7DE;
+    color: #6EE7DE;
+  }
+  .btn-control.danger {
+    background: rgba(255, 138, 101, 0.16);
+    border-color: rgba(255, 138, 101, 0.4);
+    color: #FF8A65;
+  }
+
+  #error-screen .app-desc { color: rgba(255, 200, 190, 0.85); }
+</style>
+</head>
+<body>
+<div id="app">
+
+  <!-- ① 最初に表示される画面 -->
+  <div id="start-screen">
+    <div class="app-title">表情ミラー</div>
+    <div class="app-desc">カメラに自分の顔を映して、鏡のように使えます。表情の練習にお使いください。</div>
+    <button id="startBtn" class="btn-primary">カメラを起動</button>
+    <div class="privacy-note">映像は録画・保存されず、外部にも送信されません。すべてこの画面上だけで表示されます。</div>
+  </div>
+
+  <!-- ② カメラ起動後の画面 -->
+  <div id="camera-screen" hidden>
+    <video id="video" autoplay playsinline muted></video>
+
+    <div id="guide-overlay" hidden>
+      <div class="oval"></div>
+    </div>
+
+    <div class="top-pill">表情ミラー</div>
+
+    <div class="controls">
+      <button id="guideToggleBtn" class="btn-control">ガイド表示</button>
+      <button id="switchCameraBtn" class="btn-control">カメラ切替</button>
+      <button id="stopBtn" class="btn-control danger">終了</button>
+    </div>
+  </div>
+
+  <!-- ③ エラー時の画面 -->
+  <div id="error-screen" hidden>
+    <div class="app-title">カメラを起動できません</div>
+    <div id="errorMessage" class="app-desc"></div>
+    <button id="retryBtn" class="btn-primary">もう一度試す</button>
+  </div>
+
+</div>
+
+<script>
+  // ===== 画面上の要素を取得 =====
+  const startScreen   = document.getElementById('start-screen');
+  const cameraScreen  = document.getElementById('camera-screen');
+  const errorScreen   = document.getElementById('error-screen');
+  const video          = document.getElementById('video');
+  const guideOverlay   = document.getElementById('guide-overlay');
+
+  const startBtn        = document.getElementById('startBtn');
+  const retryBtn         = document.getElementById('retryBtn');
+  const guideToggleBtn   = document.getElementById('guideToggleBtn');
+  const switchCameraBtn  = document.getElementById('switchCameraBtn');
+  const stopBtn          = document.getElementById('stopBtn');
+  const errorMessage     = document.getElementById('errorMessage');
+
+  // ===== 状態を保持する変数 =====
+  let currentStream = null;   // 今使っているカメラ映像（ストリーム）
+  let facingMode = 'user';    // 'user' = 前面カメラ, 'environment' = 背面カメラ
+  let guideVisible = false;   // ガイド楕円を表示中かどうか
+
+  // 画面（start / camera / error）の切り替えをまとめる関数
+  function showScreen(name) {
+    startScreen.hidden  = name !== 'start';
+    cameraScreen.hidden = name !== 'camera';
+    errorScreen.hidden  = name !== 'error';
+  }
+
+  // カメラを起動する関数
+  async function startCamera(mode) {
+    stopCamera(); // 前のカメラが動いていたら先に止める
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: mode },
+        audio: false
+      });
+      currentStream = stream;
+      video.srcObject = stream;
+      // 前面カメラの時だけ鏡のように左右反転する
+      video.classList.toggle('mirrored', mode === 'user');
+      showScreen('camera');
+    } catch (err) {
+      showError(err);
+    }
+  }
+
+  // カメラを止める関数（バッテリー節約・プライバシーのため）
+  function stopCamera() {
+    if (currentStream) {
+      currentStream.getTracks().forEach(track => track.stop());
+      currentStream = null;
+    }
+  }
+
+  // エラー内容に応じてメッセージを表示する関数
+  function showError(err) {
+    let msg = 'カメラを起動できませんでした。';
+    if (err && err.name === 'NotAllowedError') {
+      msg = 'カメラへのアクセスが許可されていません。「設定」→「Safari」→「カメラ」で許可してください。';
+    } else if (err && err.name === 'NotFoundError') {
+      msg = 'カメラが見つかりませんでした。';
+    } else if (err && err.name === 'NotReadableError') {
+      msg = '他のアプリがカメラを使用している可能性があります。';
+    }
+    errorMessage.textContent = msg;
+    showScreen('error');
+  }
+
+  // ===== ボタンの動作を設定 =====
+  startBtn.addEventListener('click', () => startCamera(facingMode));
+  retryBtn.addEventListener('click', () => startCamera(facingMode));
+
+  switchCameraBtn.addEventListener('click', () => {
+    facingMode = (facingMode === 'user') ? 'environment' : 'user';
+    startCamera(facingMode);
+  });
+
+  guideToggleBtn.addEventListener('click', () => {
+    guideVisible = !guideVisible;
+    guideOverlay.hidden = !guideVisible;
+    guideToggleBtn.classList.toggle('active', guideVisible);
+    guideToggleBtn.textContent = guideVisible ? 'ガイド非表示' : 'ガイド表示';
+  });
+
+  stopBtn.addEventListener('click', () => {
+    stopCamera();
+    showScreen('start');
+  });
+
+  // アプリをバックグラウンドに回した時はカメラを止め、戻ってきたら再開する
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) {
+      stopCamera();
+    } else if (!cameraScreen.hidden && !currentStream) {
+      startCamera(facingMode);
+    }
+  });
+
+  window.addEventListener('pagehide', stopCamera);
+</script>
+</body>
+</html>
