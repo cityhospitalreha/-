@@ -2,7 +2,7 @@
 // キャッシュ(保存)され、2回目以降の起動が速く・安定します。
 // カメラ映像そのものはキャッシュされません(常にリアルタイムで取得されます)。
 
-const CACHE_NAME = 'hyojo-mirror-v1';
+const CACHE_NAME = 'hyojo-mirror-v2';
 
 // 起動に必要な最低限のファイル一覧(アプリの「外側」だけで、カメラ映像は含まない)
 const ASSETS = [
@@ -43,9 +43,17 @@ self.addEventListener('activate', (event) => {
   self.clients.claim();
 });
 
-// リクエスト時: キャッシュにあればそれを返し、なければネットワークから取得
+// リクエスト時: まずネットワークから最新版を取りに行く。
+// (オフラインなどで取得できない場合のみ、キャッシュを使う)
+// → こうしておくと、サンプル画像を更新した際に古い表示のままになる心配がない。
 self.addEventListener('fetch', (event) => {
   event.respondWith(
-    caches.match(event.request).then((cached) => cached || fetch(event.request))
+    fetch(event.request)
+      .then((response) => {
+        const copy = response.clone();
+        caches.open(CACHE_NAME).then((cache) => cache.put(event.request, copy));
+        return response;
+      })
+      .catch(() => caches.match(event.request))
   );
 });
