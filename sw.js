@@ -14,12 +14,12 @@ const ASSETS = [
   './apple-touch-icon.png',
   './favicon-32.png',
   './samples/03.gif',
-  './samples/04.gif',
+  // './samples/04.gif',
   './samples/05.gif',
   './samples/06.gif',
   './samples/07.gif',
   './samples/08.gif',
-  './samples/09.gif',
+  // './samples/09.gif',
   './samples/10.gif'
 ];
 
