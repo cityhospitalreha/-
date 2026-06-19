@@ -2,524 +2,344 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<!-- viewport-fit=cover : iPadのノッチ/safe areaまで画面を使うための指定 -->
-<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
-<!-- ホーム画面に追加した時、Safariのアドレスバーなしでアプリのように開けるようにする指定 -->
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<!-- ブラウザのアドレスバー等の色をアプリのダーク背景に合わせる -->
-<meta name="theme-color" content="#0b0e10">
-<!-- PWAの設定ファイル(アプリ名・アイコン等を定義) -->
+<meta name="apple-mobile-web-app-title" content="TMT記録">
+<meta name="theme-color" content="#111111">
 <link rel="manifest" href="manifest.json">
-<!-- iPadのホーム画面アイコン -->
-<link rel="apple-touch-icon" href="apple-touch-icon.png">
-<!-- ブラウザのタブに表示される小さいアイコン -->
-<link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png">
-<title>表情ミラー</title>
+<link rel="apple-touch-icon" href="icon.svg">
+<title>TMT 記録</title>
 <style>
-  /* ===== 基本リセット ===== */
-  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+html, body { width: 100%; height: 100%; overflow: hidden; background: #111; color: #eee;
+  font-family: -apple-system, 'Hiragino Kaku Gothic ProN', sans-serif; font-size: 15px; }
 
-  html, body {
-    height: 100%;
-    background: #0b0e10;
-    color: #F5F5F0;
-    /* iPad(Safari)で読みやすい標準フォント。日本語はHiragino Sansが自動で使われる */
-    font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Hiragino Kaku Gothic ProN", sans-serif;
-    overflow: hidden;
-    -webkit-user-select: none;
-    user-select: none;
-  }
+/* ===== ページ共通：全画面・非表示切替 ===== */
+.page {
+  position: fixed; inset: 0;
+  display: none; flex-direction: column;
+  background: #111;
+}
+.page.active { display: flex; }
 
-  #app {
-    position: relative;
-    width: 100%;
-    height: 100vh;
-    height: 100dvh; /* iOS Safariのアドレスバー分を正しく考慮した高さ */
-    overflow: hidden;
-  }
+/* ===== ホームページ ===== */
+#page-home {
+  align-items: center; justify-content: center; gap: 0;
+  padding: 40px 32px;
+}
+.home-label { font-size: 12px; color: #555; letter-spacing: 0.15em; margin-bottom: 12px; }
+.home-logo  { font-size: 72px; font-weight: 700; font-family: monospace; color: #4c4; letter-spacing: 6px; margin-bottom: 8px; }
+.home-sub   { font-size: 13px; color: #555; margin-bottom: 56px; }
+.home-btn {
+  width: 100%; max-width: 340px; padding: 20px;
+  border-radius: 14px; border: 1px solid #444;
+  background: #1a1a1a; color: #eee;
+  font-size: 18px; font-weight: 500; cursor: pointer;
+  margin-bottom: 14px; text-align: center;
+}
+.home-btn.primary { background: #0d2a0d; border-color: #4c4; color: #4c4; font-size: 20px; padding: 24px; margin-bottom: 16px; }
+.home-btn:active { opacity: 0.6; }
+.home-count { font-size: 12px; color: #555; margin-top: 6px; min-height: 18px; }
 
-  [hidden] { display: none !important; }
+/* ===== 検査・履歴ページ共通ヘッダー ===== */
+.top-bar {
+  flex-shrink: 0;
+  display: flex; align-items: center; gap: 10px;
+  padding: 14px 16px; border-bottom: 1px solid #222;
+  background: #111;
+}
+.back-btn { background: none; border: none; color: #4c4; font-size: 15px; cursor: pointer; padding: 4px 10px 4px 0; white-space: nowrap; }
+.top-bar h1 { font-size: 16px; color: #ccc; font-weight: 600; }
 
-  /* ===== スタート画面 ===== */
-  #start-screen, #error-screen {
-    position: absolute;
-    inset: 0;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 18px;
-    padding: 32px;
-    text-align: center;
-    background: radial-gradient(circle at 50% 30%, #161b1e, #0b0e10);
-  }
+/* ===== スクロール可能なコンテンツ領域 ===== */
+.scroll-body { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; padding: 16px 14px 48px; }
 
-  .app-title {
-    font-size: 28px;
-    font-weight: 600;
-    letter-spacing: 0.02em;
-  }
+/* ===== 検査画面パーツ ===== */
+section { margin-bottom: 20px; }
+h2 { font-size: 13px; color: #888; margin-bottom: 10px; border-bottom: 1px solid #333; padding-bottom: 4px; }
+select, input[type=text], input[type=number] {
+  width: 100%; padding: 10px; background: #222; border: 1px solid #444;
+  border-radius: 8px; color: #eee; font-size: 16px; outline: none;
+}
+.row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.field label { display: block; font-size: 12px; color: #888; margin-bottom: 5px; }
+.part-block { background: #1a1a1a; border: 1px solid #333; border-radius: 10px; padding: 14px; margin-bottom: 12px; }
+.timer-num {
+  font-size: 48px; font-weight: 300; letter-spacing: 3px;
+  font-variant-numeric: tabular-nums; font-family: monospace;
+  color: #eee; text-align: center; margin-bottom: 10px;
+}
+.timer-num.running { color: #4c4; }
+.btn-row { display: flex; gap: 8px; margin-bottom: 8px; }
+.btn { flex: 1; padding: 11px 0; border-radius: 6px; border: 1px solid #444; background: #222; color: #ccc; font-size: 14px; cursor: pointer; }
+.btn:active { opacity: 0.7; }
+.btn-g { background: #1a3a1a; border-color: #4c4; color: #4c4; }
+.btn-y { background: #2a2a00; border-color: #cc4; color: #cc4; }
+.btn-r { background: #2a1010; border-color: #c44; color: #c44; }
+.btn-save { background: #0d1a2a; border: 1px solid #48f; color: #48f; font-size: 15px; width: 100%; padding: 14px; border-radius: 8px; margin-top: 8px; cursor: pointer; }
+.timer-msg { font-size: 12px; color: #777; text-align: center; min-height: 16px; margin-bottom: 12px; }
+.time-row { display: flex; align-items: center; gap: 8px; margin-bottom: 14px; }
+.time-row label { font-size: 12px; color: #888; white-space: nowrap; }
+.time-row input { flex: 1; padding: 9px; background: #222; border: 1px solid #444; border-radius: 6px; color: #eee; font-size: 16px; text-align: right; width: auto; }
+.time-row .unit { font-size: 12px; color: #777; white-space: nowrap; }
+.divider { border: none; border-top: 1px solid #2a2a2a; margin: 12px 0; }
+.counter-row { display: flex; align-items: center; background: #222; border: 1px solid #444; border-radius: 8px; margin-bottom: 10px; overflow: hidden; }
+.counter-label { flex: 1; font-size: 13px; color: #aaa; padding: 0 12px; }
+.counter-val { font-size: 22px; font-weight: 500; padding: 10px 16px; min-width: 48px; text-align: center; color: #eee; font-variant-numeric: tabular-nums; }
+.cnt-btn { padding: 10px 18px; background: #2a2a2a; border: none; border-left: 1px solid #444; color: #ccc; font-size: 22px; cursor: pointer; line-height: 1; }
+.cnt-btn:first-child { border-left: none; border-right: 1px solid #444; }
+.cnt-btn:active { background: #333; }
+.sum-table { width: 100%; border-collapse: collapse; margin-bottom: 16px; }
+.sum-table th { background: #1a1a1a; color: #888; font-size: 13px; font-weight: 500; padding: 10px 8px; border: 1px solid #333; text-align: center; }
+.sum-table th.rh { text-align: left; width: 38%; }
+.sum-table td { padding: 10px 8px; border: 1px solid #2a2a2a; text-align: center; font-size: 16px; background: #1a1a1a; font-variant-numeric: tabular-nums; }
+.sum-table td.rl { font-size: 13px; color: #888; text-align: left; background: #161616; }
+.mx-wrap { margin-bottom: 14px; }
+.mx-title { font-size: 12px; color: #888; margin-bottom: 6px; }
+.mx-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.mx-table th { background: #1a1a1a; color: #777; font-weight: 500; padding: 8px 6px; border: 1px solid #333; text-align: center; font-size: 12px; }
+.mx-table th.co { background: #161616; }
+.mx-table td { padding: 10px 6px; border: 1px solid #2a2a2a; text-align: center; font-size: 13px; font-weight: 600; }
+.mx-table td.rh { background: #1a1a1a; color: #777; font-size: 12px; font-weight: 400; text-align: left; padding-left: 8px; }
+.cn { background: #0d2a0d; color: #4c4; }
+.cb { background: #2a2500; color: #cc4; }
+.ca { background: #2a0d0d; color: #f55; }
+.cc { outline: 2px solid #fff; outline-offset: -2px; }
+table.ref { width: 100%; border-collapse: collapse; font-size: 13px; margin-bottom: 14px; }
+table.ref th { color: #777; font-weight: 500; padding: 6px 4px; border-bottom: 1px solid #333; text-align: left; font-size: 12px; }
+table.ref td { padding: 7px 4px; border-bottom: 1px solid #222; }
+table.ref tr.hl td { color: #6af; font-weight: 600; }
+.legend { display: flex; gap: 12px; font-size: 12px; flex-wrap: wrap; margin-top: 8px; }
+.disclaimer { font-size: 11px; color: #555; margin-top: 20px; line-height: 1.6; }
 
-  .app-desc {
-    font-size: 15px;
-    line-height: 1.7;
-    color: rgba(245, 245, 240, 0.65);
-    max-width: 320px;
-  }
-
-  .privacy-note {
-    font-size: 12px;
-    color: rgba(245, 245, 240, 0.4);
-    max-width: 280px;
-    line-height: 1.6;
-  }
-
-  .btn-primary {
-    background: linear-gradient(135deg, #6EE7DE, #4FC3BD);
-    color: #06201D;
-    font-weight: 600;
-    font-size: 17px;
-    border: none;
-    border-radius: 999px;
-    padding: 16px 44px;
-    min-height: 52px;
-    cursor: pointer;
-    box-shadow: 0 8px 24px rgba(110, 231, 222, 0.25);
-    transition: transform 0.15s ease;
-  }
-  .btn-primary:active { transform: scale(0.96); }
-
-  /* ===== カメラ画面 ===== */
-  /* 全体を縦に並べ、上(stage)が映像エリア、下(controls)が操作バー */
-  #camera-screen {
-    position: absolute;
-    inset: 0;
-    display: flex;
-    flex-direction: column;
-  }
-
-  /* 見本エリアとカメラエリアを並べる領域。
-     縦長(portrait)の時は上下、横長(landscape)の時は左右に自動で切り替わる */
-  #stage {
-    flex: 1;
-    min-height: 0;
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-    background: #000; /* この黒い隙間が2つのエリアの境界線として見える */
-    overflow: hidden;
-  }
-  @media (orientation: landscape) {
-    #stage { flex-direction: row; }
-  }
-
-  .pane {
-    position: relative;
-    flex: 1;
-    min-width: 0;
-    min-height: 0;
-    overflow: hidden;
-    background: #0b0e10;
-  }
-
-  video#video {
-    position: absolute;
-    inset: 0;
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    background: #000;
-  }
-  /* 前面カメラの時だけ左右反転して「鏡」にする */
-  video#video.mirrored { transform: scaleX(-1); }
-
-  /* 顔の位置を合わせるための目安の楕円ガイド */
-  #guide-overlay {
-    position: absolute;
-    inset: 0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    pointer-events: none;
-  }
-  #guide-overlay .oval {
-    width: 56%;
-    max-width: 340px;
-    aspect-ratio: 3 / 4;
-    border: 2px dashed rgba(255, 255, 255, 0.55);
-    border-radius: 50%;
-  }
-
-  /* ===== 見本画像エリア ===== */
-  .sample-pane img {
-    position: absolute;
-    inset: 0;
-    width: 100%;
-    height: 100%;
-    object-fit: contain; /* 見本画像は全体が見えるよう、切れずに収める */
-    background: #05070a;
-  }
-
-  .sample-label {
-    position: absolute;
-    top: 10px;
-    left: 10px;
-    background: rgba(0, 0, 0, 0.4);
-    padding: 5px 12px;
-    border-radius: 999px;
-    font-size: 12px;
-    color: rgba(245, 245, 240, 0.85);
-  }
-
-  /* 回数×セット数の設定UI(数字を大きく目立たせ、+/-は控えめに) */
-  .target-box {
-    position: absolute;
-    top: 12px;
-    left: 50%;
-    transform: translateX(-50%);
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    background: rgba(0, 0, 0, 0.55);
-    backdrop-filter: blur(10px);
-    border: 1px solid rgba(110, 231, 222, 0.4);
-    border-radius: 20px;
-    padding: 8px 18px;
-  }
-  .stepper { display: flex; align-items: center; gap: 8px; }
-  .step-btn {
-    width: 26px;
-    height: 26px;
-    border-radius: 50%;
-    background: rgba(255, 255, 255, 0.1);
-    border: 1px solid rgba(255, 255, 255, 0.18);
-    color: rgba(245, 245, 240, 0.7);
-    font-size: 14px;
-    line-height: 1;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-  }
-  .step-value {
-    min-width: 38px;
-    text-align: center;
-    font-size: 32px;
-    font-weight: 800;
-    color: #6EE7DE;
-    line-height: 1;
-  }
-  .step-unit { font-size: 15px; font-weight: 500; color: rgba(245, 245, 240, 0.8); }
-
-  /* 見本の「前へ/次へ」ナビゲーション */
-  .sample-nav {
-    position: absolute;
-    left: 0; right: 0; bottom: 0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 12px;
-    padding: 10px 12px;
-    background: linear-gradient(to top, rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0));
-  }
-  .position-text {
-    font-size: 13px;
-    color: rgba(245, 245, 240, 0.75);
-    min-width: 46px;
-    text-align: center;
-  }
-
-  .controls {
-    display: flex;
-    justify-content: center;
-    gap: 14px;
-    padding: 14px 16px calc(14px + env(safe-area-inset-bottom));
-    background: #0b0e10;
-    border-top: 1px solid rgba(255, 255, 255, 0.08);
-  }
-
-  .btn-control {
-    background: rgba(255, 255, 255, 0.12);
-    border: 1px solid rgba(255, 255, 255, 0.18);
-    backdrop-filter: blur(8px);
-    color: #F5F5F0;
-    font-size: 14px;
-    font-weight: 500;
-    border-radius: 14px;
-    padding: 12px 18px;
-    min-height: 48px;
-    min-width: 92px;
-    cursor: pointer;
-  }
-  .btn-control.small {
-    padding: 8px 14px;
-    min-height: 40px;
-    min-width: auto;
-    font-size: 13px;
-  }
-  .btn-control.active {
-    background: rgba(110, 231, 222, 0.22);
-    border-color: #6EE7DE;
-    color: #6EE7DE;
-  }
-  .btn-control.danger {
-    background: rgba(255, 138, 101, 0.16);
-    border-color: rgba(255, 138, 101, 0.4);
-    color: #FF8A65;
-  }
-
-  #error-screen .app-desc { color: rgba(255, 200, 190, 0.85); }
+/* ===== 履歴 ===== */
+.hist-item { background: #1a1a1a; border: 1px solid #333; border-radius: 8px; padding: 14px; margin-bottom: 10px; }
+.hist-hd { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+.hist-id { font-size: 16px; font-weight: 600; color: #ccc; }
+.hist-date { font-size: 12px; color: #666; }
+.hist-body { font-size: 13px; color: #999; line-height: 2; }
+.hist-body strong { color: #eee; }
+.hist-del { background: none; border: 1px solid #333; border-radius: 6px; color: #666; font-size: 13px; cursor: pointer; padding: 4px 10px; margin-left: 8px; }
+.hist-del:active { color: #f55; border-color: #f55; }
+.no-hist { font-size: 14px; color: #555; text-align: center; padding: 80px 0; }
 </style>
 </head>
 <body>
-<div id="app">
 
-  <!-- ① 最初に表示される画面 -->
-  <div id="start-screen">
-    <div class="app-title">表情ミラー</div>
-    <div class="app-desc">カメラに自分の顔を映して、鏡のように使えます。表情の練習にお使いください。</div>
-    <button id="startBtn" class="btn-primary">カメラを起動</button>
-    <div class="privacy-note">映像は録画・保存されず、外部にも送信されません。すべてこの画面上だけで表示されます。</div>
+<!-- ===== ホームページ ===== -->
+<div id="page-home" class="page active">
+  <div class="home-label">Trail Making Test</div>
+  <div class="home-logo">TMT</div>
+  <div class="home-sub">記録・集計補助アプリ</div>
+  <button class="home-btn primary" onclick="goto('exam')">▶ 検査を始める</button>
+  <button class="home-btn" onclick="goto('hist')">📋 履歴を見る</button>
+  <div class="home-count" id="home-count"></div>
+</div>
+
+<!-- ===== 検査ページ ===== -->
+<div id="page-exam" class="page">
+  <div class="top-bar">
+    <button class="back-btn" onclick="goto('home')">← ホーム</button>
+    <h1>検査記録</h1>
   </div>
+  <div class="scroll-body">
 
-  <!-- ② カメラ起動後の画面 -->
-  <div id="camera-screen" hidden>
-
-    <div id="stage">
-      <!-- 見本画像エリア -->
-      <div class="pane sample-pane">
-        <img id="sampleImg" src="" alt="見本画像">
-        <div class="sample-label" id="sampleLabel">見本 1</div>
-
-        <div class="target-box">
-          <div class="stepper">
-            <button id="repsMinus" class="step-btn" aria-label="回数を減らす">−</button>
-            <span id="repsValue" class="step-value">5</span>
-            <button id="repsPlus" class="step-btn" aria-label="回数を増やす">＋</button>
-          </div>
-          <span class="step-unit">回 ×</span>
-          <div class="stepper">
-            <button id="setsMinus" class="step-btn" aria-label="セット数を減らす">−</button>
-            <span id="setsValue" class="step-value">2</span>
-            <button id="setsPlus" class="step-btn" aria-label="セット数を増やす">＋</button>
-          </div>
-          <span class="step-unit">セット</span>
-        </div>
-
-        <div class="sample-nav">
-          <button id="prevSampleBtn" class="btn-control small">前へ</button>
-          <span id="positionText" class="position-text">1 / 1</span>
-          <button id="nextSampleBtn" class="btn-control small">次へ</button>
+    <section>
+      <h2>① 基本情報</h2>
+      <div class="row2">
+        <div class="field"><label>イニシャル</label><input type="text" id="initial" placeholder="例：YT" maxlength="4"></div>
+        <div class="field"><label>年代</label>
+          <select id="age" onchange="calc();buildRef();">
+            <option value="">-- 選択 --</option>
+            <option value="20">20代</option><option value="30">30代</option>
+            <option value="40">40代</option><option value="50">50代</option>
+            <option value="60">60代</option><option value="70">70代</option>
+          </select>
         </div>
       </div>
+    </section>
 
-      <!-- カメラ(鏡)エリア -->
-      <div class="pane camera-pane">
-        <video id="video" autoplay playsinline muted></video>
-        <div id="guide-overlay" hidden>
-          <div class="oval"></div>
+    <section>
+      <h2>② Part A</h2>
+      <div class="part-block">
+        <div class="timer-num" id="disp-a">00:00.0</div>
+        <div class="btn-row">
+          <button class="btn btn-g" id="sa" onclick="startT('a')">▶ 開始</button>
+          <button class="btn btn-y" id="pa" onclick="stopT('a')" disabled>■ 停止</button>
+          <button class="btn btn-r" onclick="resetT('a')">↺ リセット</button>
         </div>
+        <div class="timer-msg" id="msg-a"></div>
+        <div class="time-row"><label>所要時間</label><input type="number" id="at" min="0" placeholder="0" oninput="calc()"><span class="unit">秒</span></div>
+        <hr class="divider">
+        <div class="counter-row"><button class="cnt-btn" onclick="cnt('ae',-1)">−</button><div class="counter-label">エラー</div><div class="counter-val" id="ae">0</div><button class="cnt-btn" onclick="cnt('ae',1)">＋</button></div>
+        <div class="counter-row"><button class="cnt-btn" onclick="cnt('al',-1)">−</button><div class="counter-label">リフト</div><div class="counter-val" id="al">0</div><button class="cnt-btn" onclick="cnt('al',1)">＋</button></div>
       </div>
-    </div>
+    </section>
 
-    <div class="controls">
-      <button id="guideToggleBtn" class="btn-control">ガイド表示</button>
-      <button id="stopBtn" class="btn-control danger">終了</button>
-    </div>
+    <section>
+      <h2>③ Part B</h2>
+      <div class="part-block">
+        <div class="timer-num" id="disp-b">00:00.0</div>
+        <div class="btn-row">
+          <button class="btn btn-g" id="sb" onclick="startT('b')">▶ 開始</button>
+          <button class="btn btn-y" id="pb" onclick="stopT('b')" disabled>■ 停止</button>
+          <button class="btn btn-r" onclick="resetT('b')">↺ リセット</button>
+        </div>
+        <div class="timer-msg" id="msg-b"></div>
+        <div class="time-row"><label>所要時間</label><input type="number" id="bt" min="0" placeholder="0" oninput="calc()"><span class="unit">秒</span></div>
+        <hr class="divider">
+        <div class="counter-row"><button class="cnt-btn" onclick="cnt('be',-1)">−</button><div class="counter-label">エラー</div><div class="counter-val" id="be">0</div><button class="cnt-btn" onclick="cnt('be',1)">＋</button></div>
+        <div class="counter-row"><button class="cnt-btn" onclick="cnt('bl',-1)">−</button><div class="counter-label">リフト</div><div class="counter-val" id="bl">0</div><button class="cnt-btn" onclick="cnt('bl',1)">＋</button></div>
+      </div>
+    </section>
+
+    <section>
+      <h2>④ 集計・判定</h2>
+      <table class="sum-table">
+        <thead><tr><th class="rh"></th><th>Part A</th><th>Part B</th></tr></thead>
+        <tbody>
+          <tr><td class="rl">所要時間（秒）</td><td id="s-at">—</td><td id="s-bt">—</td></tr>
+          <tr><td class="rl">エラー</td><td id="s-ae">0</td><td id="s-be">0</td></tr>
+          <tr><td class="rl">リフト</td><td id="s-al">0</td><td id="s-bl">0</td></tr>
+        </tbody>
+      </table>
+      <div class="mx-wrap">
+        <div class="mx-title">Part A 判定（縦：エラー / 横：時間）</div>
+        <table class="mx-table">
+          <thead><tr><th class="co"></th><th>±1SD以内</th><th>±2SD以内</th><th>±2SD超</th></tr></thead>
+          <tbody>
+            <tr><td class="rh">0〜2回</td><td class="cn" id="ma-00">正常</td><td class="cb" id="ma-01">境界</td><td class="ca" id="ma-02">異常</td></tr>
+            <tr><td class="rh">3回以上</td><td class="cb" id="ma-10">境界</td><td class="ca" id="ma-11">異常</td><td class="ca" id="ma-12">異常</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="mx-wrap">
+        <div class="mx-title">Part B 判定（縦：エラー / 横：時間）</div>
+        <table class="mx-table">
+          <thead><tr><th class="co"></th><th>±1SD以内</th><th>±2SD以内</th><th>±2SD超</th></tr></thead>
+          <tbody>
+            <tr><td class="rh">0〜4回</td><td class="cn" id="mb-00">正常</td><td class="cb" id="mb-01">境界</td><td class="ca" id="mb-02">異常</td></tr>
+            <tr><td class="rh">5回以上</td><td class="cb" id="mb-10">境界</td><td class="ca" id="mb-11">異常</td><td class="ca" id="mb-12">異常</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="legend">
+        <span style="color:#4c4;">● 正常</span>
+        <span style="color:#cc4;">● 境界</span>
+        <span style="color:#f55;">● 異常</span>
+        <span style="color:#fff;">□ 現在の値</span>
+      </div>
+      <button class="btn-save" onclick="saveRecord()">💾 この結果を保存する</button>
+    </section>
+
+    <section>
+      <h2>⑤ 基準値表</h2>
+      <div style="font-size:12px;color:#888;margin-bottom:6px;">Part A（秒）</div>
+      <table class="ref"><thead><tr><th>年代</th><th>±1SD以内</th><th>±2SD以内</th><th>±2SD超</th></tr></thead><tbody id="rba"></tbody></table>
+      <div style="font-size:12px;color:#888;margin-bottom:6px;">Part B（秒）</div>
+      <table class="ref"><thead><tr><th>年代</th><th>±1SD以内</th><th>±2SD以内</th><th>±2SD超</th></tr></thead><tbody id="rbb"></tbody></table>
+      <div class="legend"><span style="color:#6af;">← 選択年代</span></div>
+    </section>
+
+    <p class="disclaimer">※ 判定は参考値です。臨床判断は療法士が行ってください。個人情報は記録されません。</p>
   </div>
+</div>
 
-  <!-- ③ エラー時の画面 -->
-  <div id="error-screen" hidden>
-    <div class="app-title">カメラを起動できません</div>
-    <div id="errorMessage" class="app-desc"></div>
-    <button id="retryBtn" class="btn-primary">もう一度試す</button>
+<!-- ===== 履歴ページ ===== -->
+<div id="page-hist" class="page">
+  <div class="top-bar">
+    <button class="back-btn" onclick="goto('home')">← ホーム</button>
+    <h1>検査履歴</h1>
   </div>
-
+  <div class="scroll-body">
+    <div id="hist-list"></div>
+    <p class="disclaimer">直近10件・7日間保存。この端末のみに保存されます。</p>
+  </div>
 </div>
 
 <script>
-  // ===== 画面上の要素を取得 =====
-  const startScreen   = document.getElementById('start-screen');
-  const cameraScreen  = document.getElementById('camera-screen');
-  const errorScreen   = document.getElementById('error-screen');
-  const video          = document.getElementById('video');
-  const guideOverlay   = document.getElementById('guide-overlay');
+const N = {
+  A:{20:{s1:37,s2:45},30:{s1:37,s2:45},40:{s1:38,s2:45},50:{s1:40,s2:46},60:{s1:42,s2:49},70:{s1:57,s2:68}},
+  B:{20:{s1:54,s2:65},30:{s1:55,s2:65},40:{s1:61,s2:73},50:{s1:74,s2:88},60:{s1:75,s2:88},70:{s1:113,s2:138}}
+};
+const AGES=[20,30,40,50,60,70];
+const C={ae:0,al:0,be:0,bl:0};
+const JDG=[['正常','境界','異常'],['境界','異常','異常']];
+const HKEY='tmt_history', HMAX=10, HEXP=7*24*60*60*1000;
 
-  const startBtn        = document.getElementById('startBtn');
-  const retryBtn         = document.getElementById('retryBtn');
-  const guideToggleBtn   = document.getElementById('guideToggleBtn');
-  const stopBtn          = document.getElementById('stopBtn');
-  const errorMessage     = document.getElementById('errorMessage');
+// ---- ページ切替 ----
+function goto(name){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.getElementById('page-'+name).classList.add('active');
+  window.scrollTo(0,0);
+  if(name==='home') updateCount();
+  if(name==='hist') renderHist();
+}
 
-  // ===== 見本画像の設定 =====
-  // ファイル名・表示ラベル・初期の回数(reps)とセット数(sets)をここで管理しています。
-  // 画像を入れ替える場合は samples フォルダにファイルを置き、この配列も書き換えてください。
-  // 拡張子は .jpg / .png / .gif が使えます（.gif はアニメーションもそのまま再生されます）。
-  const SAMPLES = [
-   //  { file: 'samples/04.gif', label: '口唇の運動（あ・お・う）', reps: 5, sets: 2 },
-    { file: 'samples/05.gif', label: '口唇の突出－引き', reps: 5, sets: 2 },
-    { file: 'samples/06.gif', label: '舌の突出－引き', reps: 5, sets: 2 },
-    { file: 'samples/07.gif', label: '舌の左右', reps: 5, sets: 2 },
-    { file: 'samples/08.gif', label: '舌の上下', reps: 5, sets: 2 },
-   //  { file: 'samples/09.gif', label: '頬の膨らませ－凹ませ', reps: 5, sets: 2 },
-    { file: 'samples/03.gif', label: '頬の膨らませ（左右）', reps: 5, sets: 2 },
-    { file: 'samples/10.gif', label: '舌の運動（口唇に沿って一周）', reps: 5, sets: 2 }
-    // 開口ー閉口 は見本画像がまだのため、いただいたら追加します
-  ];
+// ---- カウンター ----
+function cnt(id,d){C[id]=Math.max(0,C[id]+d);document.getElementById(id).textContent=C[id];calc();}
 
-  let sampleIndex = 0; // 今表示している見本の番号
-  // 見本ごとの回数・セット数(画面上の+/-ボタンでその場で調整できる)
-  let repsTargets = SAMPLES.map(s => s.reps);
-  let setsTargets = SAMPLES.map(s => s.sets);
+// ---- タイマー ----
+const T={a:{iv:null,el:0},b:{iv:null,el:0}};
+function fmt(ms){const t=ms/1000,m=Math.floor(t/60),s=Math.floor(t%60),d=Math.floor((t*10)%10);return String(m).padStart(2,'0')+':'+String(s).padStart(2,'0')+'.'+d;}
+function startT(p){const st=T[p];if(st.iv)return;const t0=Date.now()-st.el;st.iv=setInterval(()=>{st.el=Date.now()-t0;document.getElementById('disp-'+p).textContent=fmt(st.el);},100);document.getElementById('disp-'+p).classList.add('running');document.getElementById('s'+p).disabled=true;document.getElementById('p'+p).disabled=false;document.getElementById('msg-'+p).textContent='計測中...';}
+function stopT(p){const st=T[p];clearInterval(st.iv);st.iv=null;document.getElementById('disp-'+p).classList.remove('running');document.getElementById('s'+p).disabled=false;document.getElementById('p'+p).disabled=true;const sec=Math.round(st.el/1000);document.getElementById(p+'t').value=sec;document.getElementById('msg-'+p).textContent=sec+'秒 → 入力欄に転記しました';calc();}
+function resetT(p){const st=T[p];clearInterval(st.iv);st.iv=null;st.el=0;document.getElementById('disp-'+p).textContent='00:00.0';document.getElementById('disp-'+p).classList.remove('running');document.getElementById('s'+p).disabled=false;document.getElementById('p'+p).disabled=true;document.getElementById('msg-'+p).textContent='';}
 
-  const sampleImg      = document.getElementById('sampleImg');
-  const sampleLabel    = document.getElementById('sampleLabel');
-  const positionText   = document.getElementById('positionText');
-  const repsValue      = document.getElementById('repsValue');
-  const setsValue      = document.getElementById('setsValue');
-  const repsMinus      = document.getElementById('repsMinus');
-  const repsPlus       = document.getElementById('repsPlus');
-  const setsMinus      = document.getElementById('setsMinus');
-  const setsPlus       = document.getElementById('setsPlus');
-  const prevSampleBtn  = document.getElementById('prevSampleBtn');
-  const nextSampleBtn  = document.getElementById('nextSampleBtn');
-
-  // 見本画像エリアの表示内容を、現在の状態に合わせて描き直す関数
-  function renderSample() {
-    const current = SAMPLES[sampleIndex];
-    sampleImg.src = current.file;
-    sampleImg.alt = current.label;
-    sampleLabel.textContent = current.label;
-    positionText.textContent = (sampleIndex + 1) + ' / ' + SAMPLES.length;
-    repsValue.textContent = repsTargets[sampleIndex];
-    setsValue.textContent = setsTargets[sampleIndex];
-  }
-
-  // ===== 状態を保持する変数 =====
-  let currentStream = null;   // 今使っているカメラ映像（ストリーム）
-  let guideVisible = false;   // ガイド楕円を表示中かどうか
-
-  // 画面（start / camera / error）の切り替えをまとめる関数
-  function showScreen(name) {
-    startScreen.hidden  = name !== 'start';
-    cameraScreen.hidden = name !== 'camera';
-    errorScreen.hidden  = name !== 'error';
-  }
-
-  // カメラを起動する関数(常に前面カメラを使用)
-  async function startCamera() {
-    stopCamera(); // 前のカメラが動いていたら先に止める
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: 'user' },
-        audio: false
-      });
-      currentStream = stream;
-      video.srcObject = stream;
-      video.classList.add('mirrored'); // 常に左右反転して「鏡」にする
-      showScreen('camera');
-    } catch (err) {
-      showError(err);
-    }
-  }
-
-  // カメラを止める関数（バッテリー節約・プライバシーのため）
-  function stopCamera() {
-    if (currentStream) {
-      currentStream.getTracks().forEach(track => track.stop());
-      currentStream = null;
-    }
-  }
-
-  // エラー内容に応じてメッセージを表示する関数
-  function showError(err) {
-    let msg = 'カメラを起動できませんでした。';
-    if (err && err.name === 'NotAllowedError') {
-      msg = 'カメラへのアクセスが許可されていません。「設定」→「Safari」→「カメラ」で許可してください。';
-    } else if (err && err.name === 'NotFoundError') {
-      msg = 'カメラが見つかりませんでした。';
-    } else if (err && err.name === 'NotReadableError') {
-      msg = '他のアプリがカメラを使用している可能性があります。';
-    }
-    errorMessage.textContent = msg;
-    showScreen('error');
-  }
-
-  // ===== ボタンの動作を設定 =====
-  startBtn.addEventListener('click', () => startCamera());
-  retryBtn.addEventListener('click', () => startCamera());
-
-  guideToggleBtn.addEventListener('click', () => {
-    guideVisible = !guideVisible;
-    guideOverlay.hidden = !guideVisible;
-    guideToggleBtn.classList.toggle('active', guideVisible);
-    guideToggleBtn.textContent = guideVisible ? 'ガイド非表示' : 'ガイド表示';
+// ---- 集計 ----
+function trank(v,n){if(!n||isNaN(v))return null;return v<=n.s1?0:v<=n.s2?1:2;}
+function erank(e,thr){return e<thr?0:1;}
+function calc(){
+  const age=parseInt(document.getElementById('age').value)||null;
+  const at=parseFloat(document.getElementById('at').value);
+  const bt=parseFloat(document.getElementById('bt').value);
+  document.getElementById('s-at').textContent=!isNaN(at)?at+'秒':'—';
+  document.getElementById('s-bt').textContent=!isNaN(bt)?bt+'秒':'—';
+  document.getElementById('s-ae').textContent=C.ae;
+  document.getElementById('s-al').textContent=C.al;
+  document.getElementById('s-be').textContent=C.be;
+  document.getElementById('s-bl').textContent=C.bl;
+  ['ma-00','ma-01','ma-02','ma-10','ma-11','ma-12','mb-00','mb-01','mb-02','mb-10','mb-11','mb-12'].forEach(id=>document.getElementById(id).classList.remove('cc'));
+  if(age&&!isNaN(at)){const tr=trank(at,N.A[age]),er=erank(C.ae,3);if(tr!==null)document.getElementById('ma-'+er+tr).classList.add('cc');}
+  if(age&&!isNaN(bt)){const tr=trank(bt,N.B[age]),er=erank(C.be,5);if(tr!==null)document.getElementById('mb-'+er+tr).classList.add('cc');}
+}
+function buildRef(){
+  const age=parseInt(document.getElementById('age').value)||null;
+  ['A','B'].forEach(pt=>{
+    const tb=document.getElementById('rb'+pt.toLowerCase());tb.innerHTML='';
+    AGES.forEach(a=>{const n=N[pt][a],tr=document.createElement('tr');if(a===age)tr.className='hl';tr.innerHTML=`<td>${a}代</td><td>〜${n.s1}秒</td><td>${n.s1+1}〜${n.s2}秒</td><td>${n.s2+1}秒〜</td>`;tb.appendChild(tr);});
   });
+}
 
-  stopBtn.addEventListener('click', () => {
-    stopCamera();
-    showScreen('start');
-  });
+// ---- 履歴 ----
+function loadHist(){try{const r=localStorage.getItem(HKEY);if(!r)return[];return JSON.parse(r).filter(x=>Date.now()-x.ts<HEXP);}catch(e){return[];}}
+function saveHist(l){localStorage.setItem(HKEY,JSON.stringify(l));}
+function jlabel(er,tr){if(er===null||tr===null)return'—';return JDG[er][tr];}
+function saveRecord(){
+  const ini=document.getElementById('initial').value.trim()||'??';
+  const age=parseInt(document.getElementById('age').value)||null;
+  const at=parseFloat(document.getElementById('at').value);
+  const bt=parseFloat(document.getElementById('bt').value);
+  if(!age){alert('年代を選択してください');return;}
+  if(isNaN(at)&&isNaN(bt)){alert('所要時間を入力してください');return;}
+  const trA=!isNaN(at)?trank(at,N.A[age]):null,erA=erank(C.ae,3);
+  const trB=!isNaN(bt)?trank(bt,N.B[age]):null,erB=erank(C.be,5);
+  const rec={ts:Date.now(),ini,age,at:isNaN(at)?null:at,bt:isNaN(bt)?null:bt,ae:C.ae,al:C.al,be:C.be,bl:C.bl,ja:jlabel(erA,trA),jb:jlabel(erB,trB)};
+  let l=loadHist();l.unshift(rec);if(l.length>HMAX)l=l.slice(0,HMAX);
+  saveHist(l);updateCount();alert('保存しました！');
+}
+function delRec(ts){saveHist(loadHist().filter(r=>r.ts!==ts));renderHist();updateCount();}
+function dstr(ts){const d=new Date(ts);return`${d.getMonth()+1}/${d.getDate()} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;}
+function renderHist(){
+  const l=loadHist(),el=document.getElementById('hist-list');
+  if(!l.length){el.innerHTML='<div class="no-hist">保存された記録はありません</div>';return;}
+  el.innerHTML=l.map(r=>`<div class="hist-item"><div class="hist-hd"><span class="hist-id">${r.ini}・${r.age}代</span><span><span class="hist-date">${dstr(r.ts)}</span><button class="hist-del" onclick="delRec(${r.ts})">削除</button></span></div><div class="hist-body">A：${r.at!==null?r.at+'秒':'—'} / エラー${r.ae} / リフト${r.al} → <strong>${r.ja}</strong><br>B：${r.bt!==null?r.bt+'秒':'—'} / エラー${r.be} / リフト${r.bl} → <strong>${r.jb}</strong></div></div>`).join('');
+}
+function updateCount(){const n=loadHist().length;document.getElementById('home-count').textContent=n?`保存済み ${n}件`:'';}
 
-  // 見本を1つ前に戻す(最初の見本の時は最後の見本に循環する)
-  prevSampleBtn.addEventListener('click', () => {
-    sampleIndex = (sampleIndex - 1 + SAMPLES.length) % SAMPLES.length;
-    renderSample();
-  });
-
-  // 見本を1つ次に進める(最後の見本の時は最初の見本に循環する)
-  nextSampleBtn.addEventListener('click', () => {
-    sampleIndex = (sampleIndex + 1) % SAMPLES.length;
-    renderSample();
-  });
-
-  // 今表示中の見本の「回数」を1減らす(1回未満にはしない)
-  repsMinus.addEventListener('click', () => {
-    repsTargets[sampleIndex] = Math.max(1, repsTargets[sampleIndex] - 1);
-    renderSample();
-  });
-
-  // 今表示中の見本の「回数」を1増やす
-  repsPlus.addEventListener('click', () => {
-    repsTargets[sampleIndex] += 1;
-    renderSample();
-  });
-
-  // 今表示中の見本の「セット数」を1減らす(1セット未満にはしない)
-  setsMinus.addEventListener('click', () => {
-    setsTargets[sampleIndex] = Math.max(1, setsTargets[sampleIndex] - 1);
-    renderSample();
-  });
-
-  // 今表示中の見本の「セット数」を1増やす
-  setsPlus.addEventListener('click', () => {
-    setsTargets[sampleIndex] += 1;
-    renderSample();
-  });
-
-  renderSample(); // 起動直後から見本エリアの表示を整えておく
-
-  // アプリをバックグラウンドに回した時はカメラを止め、戻ってきたら再開する
-  document.addEventListener('visibilitychange', () => {
-    if (document.hidden) {
-      stopCamera();
-    } else if (!cameraScreen.hidden && !currentStream) {
-      startCamera();
-    }
-  });
-
-  window.addEventListener('pagehide', stopCamera);
-
-  // ===== PWA: Service Workerの登録 =====
-  // ファイルをキャッシュ(端末内保存)させ、再訪問時の起動を速くする
-  if ('serviceWorker' in navigator) {
-    window.addEventListener('load', () => {
-      navigator.serviceWorker.register('sw.js').catch(() => {
-        // 登録に失敗してもアプリ自体は通常通り動作する
-      });
-    });
-  }
+if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js');
+buildRef();updateCount();
 </script>
 </body>
 </html>
