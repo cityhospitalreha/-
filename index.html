@@ -2,29 +2,21 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<!-- viewport-fit=cover : iPadのノッチ/safe areaまで画面を使うための指定 -->
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
-<!-- ホーム画面に追加した時、Safariのアドレスバーなしでアプリのように開けるようにする指定 -->
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<!-- ブラウザのアドレスバー等の色をアプリのダーク背景に合わせる -->
 <meta name="theme-color" content="#0b0e10">
-<!-- PWAの設定ファイル(アプリ名・アイコン等を定義) -->
 <link rel="manifest" href="manifest.json">
-<!-- iPadのホーム画面アイコン -->
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
-<!-- ブラウザのタブに表示される小さいアイコン -->
 <link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png">
 <title>表情ミラー</title>
 <style>
-  /* ===== 基本リセット ===== */
   * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 
   html, body {
     height: 100%;
     background: #0b0e10;
     color: #F5F5F0;
-    /* iPad(Safari)で読みやすい標準フォント。日本語はHiragino Sansが自動で使われる */
     font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Hiragino Kaku Gothic ProN", sans-serif;
     overflow: hidden;
     -webkit-user-select: none;
@@ -35,13 +27,12 @@
     position: relative;
     width: 100%;
     height: 100vh;
-    height: 100dvh; /* iOS Safariのアドレスバー分を正しく考慮した高さ */
+    height: 100dvh;
     overflow: hidden;
   }
 
   [hidden] { display: none !important; }
 
-  /* ===== スタート画面 ===== */
   #start-screen, #error-screen {
     position: absolute;
     inset: 0;
@@ -90,8 +81,6 @@
   }
   .btn-primary:active { transform: scale(0.96); }
 
-  /* ===== カメラ画面 ===== */
-  /* 全体を縦に並べ、上(stage)が映像エリア、下(controls)が操作バー */
   #camera-screen {
     position: absolute;
     inset: 0;
@@ -99,15 +88,13 @@
     flex-direction: column;
   }
 
-  /* 見本エリアとカメラエリアを並べる領域。
-     縦長(portrait)の時は上下、横長(landscape)の時は左右に自動で切り替わる */
   #stage {
     flex: 1;
     min-height: 0;
     display: flex;
     flex-direction: column;
     gap: 2px;
-    background: #000; /* この黒い隙間が2つのエリアの境界線として見える */
+    background: #000;
     overflow: hidden;
   }
   @media (orientation: landscape) {
@@ -131,10 +118,8 @@
     object-fit: cover;
     background: #000;
   }
-  /* 前面カメラの時だけ左右反転して「鏡」にする */
   video#video.mirrored { transform: scaleX(-1); }
 
-  /* 顔の位置を合わせるための目安の楕円ガイド */
   #guide-overlay {
     position: absolute;
     inset: 0;
@@ -151,13 +136,17 @@
     border-radius: 50%;
   }
 
-  /* ===== 見本画像エリア ===== */
+  /* ===== 見本画像 =====
+     object-fit: cover で画像を枠いっぱいに拡大し、
+     すべての見本が同じ大きさに見えるようにする。
+     顔イラストはどの画像も中央に描かれているので切れにくい。 */
   .sample-pane img {
     position: absolute;
     inset: 0;
     width: 100%;
     height: 100%;
-    object-fit: contain; /* 見本画像は全体が見えるよう、切れずに収める */
+    object-fit: cover;
+    object-position: center top; /* 顔が上寄りの画像でも顔が見えるよう上基準で表示 */
     background: #05070a;
   }
 
@@ -172,7 +161,6 @@
     color: rgba(245, 245, 240, 0.85);
   }
 
-  /* 回数管理(カウンター)のUI */
   .counter-box {
     position: absolute;
     top: 10px;
@@ -189,7 +177,6 @@
   .count-number { font-size: 20px; font-weight: 700; color: #6EE7DE; line-height: 1; }
   .count-total { font-size: 10px; color: rgba(245, 245, 240, 0.5); margin-top: 2px; }
 
-  /* 見本の「前へ/次へ」ナビゲーション */
   .sample-nav {
     position: absolute;
     left: 0; right: 0; bottom: 0;
@@ -252,7 +239,6 @@
 <body>
 <div id="app">
 
-  <!-- ① 最初に表示される画面 -->
   <div id="start-screen">
     <div class="app-title">表情ミラー</div>
     <div class="app-desc">カメラに自分の顔を映して、鏡のように使えます。表情の練習にお使いください。</div>
@@ -260,14 +246,11 @@
     <div class="privacy-note">映像は録画・保存されず、外部にも送信されません。すべてこの画面上だけで表示されます。</div>
   </div>
 
-  <!-- ② カメラ起動後の画面 -->
   <div id="camera-screen" hidden>
-
     <div id="stage">
-      <!-- 見本画像エリア -->
       <div class="pane sample-pane">
         <img id="sampleImg" src="" alt="見本画像">
-        <div class="sample-label" id="sampleLabel">見本 1</div>
+        <div class="sample-label" id="sampleLabel"></div>
 
         <div class="counter-box">
           <button id="resetBtn" class="btn-control small">リセット</button>
@@ -285,7 +268,6 @@
         </div>
       </div>
 
-      <!-- カメラ(鏡)エリア -->
       <div class="pane camera-pane">
         <video id="video" autoplay playsinline muted></video>
         <div id="guide-overlay" hidden>
@@ -294,14 +276,13 @@
       </div>
     </div>
 
+    <!-- カメラ切替ボタンを削除。ガイド表示と終了の2つのみ -->
     <div class="controls">
       <button id="guideToggleBtn" class="btn-control">ガイド表示</button>
-      <button id="switchCameraBtn" class="btn-control">カメラ切替</button>
       <button id="stopBtn" class="btn-control danger">終了</button>
     </div>
   </div>
 
-  <!-- ③ エラー時の画面 -->
   <div id="error-screen" hidden>
     <div class="app-title">カメラを起動できません</div>
     <div id="errorMessage" class="app-desc"></div>
@@ -311,24 +292,20 @@
 </div>
 
 <script>
-  // ===== 画面上の要素を取得 =====
   const startScreen   = document.getElementById('start-screen');
   const cameraScreen  = document.getElementById('camera-screen');
   const errorScreen   = document.getElementById('error-screen');
-  const video          = document.getElementById('video');
-  const guideOverlay   = document.getElementById('guide-overlay');
+  const video         = document.getElementById('video');
+  const guideOverlay  = document.getElementById('guide-overlay');
 
-  const startBtn        = document.getElementById('startBtn');
-  const retryBtn         = document.getElementById('retryBtn');
-  const guideToggleBtn   = document.getElementById('guideToggleBtn');
-  const switchCameraBtn  = document.getElementById('switchCameraBtn');
-  const stopBtn          = document.getElementById('stopBtn');
-  const errorMessage     = document.getElementById('errorMessage');
+  const startBtn       = document.getElementById('startBtn');
+  const retryBtn       = document.getElementById('retryBtn');
+  const guideToggleBtn = document.getElementById('guideToggleBtn');
+  const stopBtn        = document.getElementById('stopBtn');
+  const errorMessage   = document.getElementById('errorMessage');
 
   // ===== 見本画像の設定 =====
-  // ファイル名と表示ラベルをここで管理しています。
-  // 画像を入れ替える場合は samples フォルダにファイルを置き、この配列も書き換えてください。
-  // 拡張子は .jpg / .png / .gif が使えます（.gif はアニメーションもそのまま再生されます）。
+  // 画像を追加する時は samples フォルダにファイルを置き、この配列に行を足してください。
   const SAMPLES = [
     { file: 'samples/05.gif', label: '口唇の突出－引き' },
     { file: 'samples/06.gif', label: '舌の突出－引き' },
@@ -336,67 +313,61 @@
     { file: 'samples/08.gif', label: '舌の上下' },
     { file: 'samples/03.gif', label: '頬の膨らませ（左右）' },
     { file: 'samples/10.gif', label: '舌の運動（口唇に沿って一周）' }
-    // 04.gif（口唇の運動 あ・お・う）と 09.gif（頬の膨らませ－凹ませ）は
-    // 画像が揃い次第、ここに追加してください。
+    // 04.gif・09.gif は画像が揃い次第ここに追加
     // 例: { file: 'samples/04.gif', label: '口唇の運動（あ・お・う）' },
   ];
 
-  let sampleIndex = 0;                              // 今表示している見本の番号
-  let sampleCounts = new Array(SAMPLES.length).fill(0); // 見本ごとの実施回数
+  let sampleIndex  = 0;
+  let sampleCounts = new Array(SAMPLES.length).fill(0);
 
-  const sampleImg      = document.getElementById('sampleImg');
-  const sampleLabel    = document.getElementById('sampleLabel');
-  const positionText   = document.getElementById('positionText');
-  const countNumber    = document.getElementById('countNumber');
-  const totalNumber    = document.getElementById('totalNumber');
-  const prevSampleBtn  = document.getElementById('prevSampleBtn');
-  const nextSampleBtn  = document.getElementById('nextSampleBtn');
-  const plusBtn        = document.getElementById('plusBtn');
-  const resetBtn       = document.getElementById('resetBtn');
+  const sampleImg     = document.getElementById('sampleImg');
+  const sampleLabel   = document.getElementById('sampleLabel');
+  const positionText  = document.getElementById('positionText');
+  const countNumber   = document.getElementById('countNumber');
+  const totalNumber   = document.getElementById('totalNumber');
+  const prevSampleBtn = document.getElementById('prevSampleBtn');
+  const nextSampleBtn = document.getElementById('nextSampleBtn');
+  const plusBtn       = document.getElementById('plusBtn');
+  const resetBtn      = document.getElementById('resetBtn');
 
-  // 見本画像エリアの表示内容を、現在の状態に合わせて描き直す関数
   function renderSample() {
     const current = SAMPLES[sampleIndex];
-    sampleImg.src = current.file;
-    sampleImg.alt = current.label;
-    sampleLabel.textContent = current.label;
+    sampleImg.src        = current.file;
+    sampleImg.alt        = current.label;
+    sampleLabel.textContent  = current.label;
     positionText.textContent = (sampleIndex + 1) + ' / ' + SAMPLES.length;
-    countNumber.textContent = sampleCounts[sampleIndex];
+    countNumber.textContent  = sampleCounts[sampleIndex];
     const total = sampleCounts.reduce((sum, n) => sum + n, 0);
-    totalNumber.textContent = total;
+    totalNumber.textContent  = total;
   }
 
-  // ===== 状態を保持する変数 =====
-  let currentStream = null;   // 今使っているカメラ映像（ストリーム）
-  let facingMode = 'user';    // 'user' = 前面カメラ, 'environment' = 背面カメラ
-  let guideVisible = false;   // ガイド楕円を表示中かどうか
+  let currentStream = null;
+  // 前面カメラ固定（切替ボタンを削除したため）
+  const facingMode  = 'user';
+  let guideVisible  = false;
 
-  // 画面（start / camera / error）の切り替えをまとめる関数
   function showScreen(name) {
     startScreen.hidden  = name !== 'start';
     cameraScreen.hidden = name !== 'camera';
     errorScreen.hidden  = name !== 'error';
   }
 
-  // カメラを起動する関数
-  async function startCamera(mode) {
-    stopCamera(); // 前のカメラが動いていたら先に止める
+  async function startCamera() {
+    stopCamera();
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: mode },
+        video: { facingMode: facingMode },
         audio: false
       });
-      currentStream = stream;
+      currentStream  = stream;
       video.srcObject = stream;
-      // 前面カメラの時だけ鏡のように左右反転する
-      video.classList.toggle('mirrored', mode === 'user');
+      video.classList.add('mirrored'); // 前面カメラ固定なので常に鏡表示
       showScreen('camera');
     } catch (err) {
       showError(err);
     }
   }
 
-  // カメラを止める関数（バッテリー節約・プライバシーのため）
   function stopCamera() {
     if (currentStream) {
       currentStream.getTracks().forEach(track => track.stop());
@@ -404,7 +375,6 @@
     }
   }
 
-  // エラー内容に応じてメッセージを表示する関数
   function showError(err) {
     let msg = 'カメラを起動できませんでした。';
     if (err && err.name === 'NotAllowedError') {
@@ -418,14 +388,8 @@
     showScreen('error');
   }
 
-  // ===== ボタンの動作を設定 =====
-  startBtn.addEventListener('click', () => startCamera(facingMode));
-  retryBtn.addEventListener('click', () => startCamera(facingMode));
-
-  switchCameraBtn.addEventListener('click', () => {
-    facingMode = (facingMode === 'user') ? 'environment' : 'user';
-    startCamera(facingMode);
-  });
+  startBtn.addEventListener('click', () => startCamera());
+  retryBtn.addEventListener('click', () => startCamera());
 
   guideToggleBtn.addEventListener('click', () => {
     guideVisible = !guideVisible;
@@ -439,50 +403,41 @@
     showScreen('start');
   });
 
-  // 見本を1つ前に戻す(最初の見本の時は最後の見本に循環する)
   prevSampleBtn.addEventListener('click', () => {
     sampleIndex = (sampleIndex - 1 + SAMPLES.length) % SAMPLES.length;
     renderSample();
   });
 
-  // 見本を1つ次に進める(最後の見本の時は最初の見本に循環する)
   nextSampleBtn.addEventListener('click', () => {
     sampleIndex = (sampleIndex + 1) % SAMPLES.length;
     renderSample();
   });
 
-  // 今表示中の見本の実施回数を1増やす
   plusBtn.addEventListener('click', () => {
     sampleCounts[sampleIndex] += 1;
     renderSample();
   });
 
-  // 今表示中の見本の実施回数を0に戻す(他の見本の回数は変わらない)
   resetBtn.addEventListener('click', () => {
     sampleCounts[sampleIndex] = 0;
     renderSample();
   });
 
-  renderSample(); // 起動直後から見本エリアの表示を整えておく
+  renderSample();
 
-  // アプリをバックグラウンドに回した時はカメラを止め、戻ってきたら再開する
   document.addEventListener('visibilitychange', () => {
     if (document.hidden) {
       stopCamera();
     } else if (!cameraScreen.hidden && !currentStream) {
-      startCamera(facingMode);
+      startCamera();
     }
   });
 
   window.addEventListener('pagehide', stopCamera);
 
-  // ===== PWA: Service Workerの登録 =====
-  // ファイルをキャッシュ(端末内保存)させ、再訪問時の起動を速くする
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
-      navigator.serviceWorker.register('sw.js').catch(() => {
-        // 登録に失敗してもアプリ自体は通常通り動作する
-      });
+      navigator.serviceWorker.register('sw.js').catch(() => {});
     });
   }
 </script>
