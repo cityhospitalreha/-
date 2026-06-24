@@ -12,17 +12,15 @@
 <title>表情ミラー</title>
 <style>
   * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
-
   html, body {
     height:100%; background:#0b0e10; color:#F5F5F0;
     font-family:-apple-system, BlinkMacSystemFont, "Hiragino Sans", "Hiragino Kaku Gothic ProN", sans-serif;
     overflow:hidden; -webkit-user-select:none; user-select:none;
   }
-
   #app { position:relative; width:100%; height:100vh; height:100dvh; overflow:hidden; }
   [hidden] { display:none !important; }
 
-  /* ===== スタート画面 ===== */
+  /* スタート画面 */
   #start-screen, #error-screen {
     position:absolute; inset:0; display:flex; flex-direction:column;
     align-items:center; justify-content:center; gap:18px; padding:32px;
@@ -55,33 +53,30 @@
   }
   .btn-primary:active { transform:scale(.96); }
 
-  /* ===== カメラ画面 ===== */
+  /* カメラ画面 */
   #camera-screen { position:absolute; inset:0; display:flex; flex-direction:column; }
 
-  /* stage: 縦分割がデフォルト */
   #stage {
     position:relative; flex:1; min-height:0;
     display:flex; flex-direction:column;
     background:#000; overflow:hidden;
   }
-  @media (orientation:landscape) {
-    #stage { flex-direction:row; }
-  }
+  @media (orientation:landscape) { #stage { flex-direction:row; } }
 
   .pane { position:relative; min-width:0; min-height:0; overflow:hidden; background:#0b0e10; }
 
-  /* ===== 境界スライダー ===== */
+  /* 境界スライダー */
   #divider {
     position:absolute; z-index:30;
-    background:rgba(110,231,222,.6);
-    touch-action:none; cursor:grab; flex-shrink:0;
+    background:rgba(110,231,222,.5);
+    touch-action:none;
   }
-  #divider:active { background:rgba(110,231,222,1); }
 
-  /* ===== 見本ペイン ===== */
-  #sampleCanvas {
+  /* 見本ペイン */
+  #sampleImg {
     position:absolute; inset:0; width:100%; height:100%;
-    object-fit:contain; background:#05070a;
+    object-fit:contain; object-position:center;
+    background:#05070a;
   }
 
   /* ラベル：左上 */
@@ -89,47 +84,46 @@
     position:absolute; top:10px; left:10px;
     background:rgba(0,0,0,.5); padding:5px 12px;
     border-radius:999px; font-size:12px; color:rgba(245,245,240,.9);
-    pointer-events:none;
+    pointer-events:none; z-index:2;
   }
 
-  /* 回数・セット表示：右上・小さく */
+  /* 回数・セット：右上・小さく */
   #setDisplay {
     position:absolute; top:10px; right:10px;
     background:rgba(0,0,0,.45); backdrop-filter:blur(6px);
-    border-radius:10px; padding:6px 10px;
+    border-radius:10px; padding:5px 10px;
     font-size:11px; color:rgba(245,245,240,.7);
-    text-align:center; line-height:1.6; pointer-events:none;
+    line-height:1.5; pointer-events:none; z-index:2;
   }
 
-  /* GIF操作：右下・縦並びアイコン */
+  /* GIF操作：右下縦 */
   #gifCtrl {
-    position:absolute; bottom:52px; right:8px;
-    display:flex; flex-direction:column; align-items:center; gap:6px;
-    background:rgba(0,0,0,.45); backdrop-filter:blur(6px);
-    border-radius:12px; padding:8px 6px;
+    position:absolute; bottom:48px; right:8px;
+    display:flex; flex-direction:column; align-items:center; gap:5px;
+    background:rgba(0,0,0,.5); backdrop-filter:blur(6px);
+    border-radius:12px; padding:8px 6px; z-index:2;
   }
   .gif-btn {
-    background:rgba(255,255,255,.12); border:1px solid rgba(255,255,255,.18);
-    color:#F5F5F0; font-size:14px; width:36px; height:36px;
-    border-radius:8px; cursor:pointer; display:flex; align-items:center; justify-content:center;
+    background:rgba(255,255,255,.12); border:1px solid rgba(255,255,255,.15);
+    color:#F5F5F0; font-size:16px; width:36px; height:36px;
+    border-radius:8px; cursor:pointer;
   }
-  .gif-btn.active { background:rgba(110,231,222,.25); border-color:#6EE7DE; color:#6EE7DE; }
-  #speedLabel { font-size:9px; color:rgba(245,245,240,.6); text-align:center; }
+  .gif-btn.active { background:rgba(110,231,222,.25); border-color:#6EE7DE; }
+  #speedLabel { font-size:9px; color:rgba(245,245,240,.6); }
 
-  /* 前へ・次へ：左下・横並び小さく */
+  /* 前へ・次へ：左下 */
   #sampleNav {
     position:absolute; bottom:8px; left:8px;
-    display:flex; align-items:center; gap:6px;
+    display:flex; align-items:center; gap:6px; z-index:2;
   }
   .nav-btn {
-    background:rgba(0,0,0,.45); backdrop-filter:blur(6px);
-    border:1px solid rgba(255,255,255,.18); color:#F5F5F0;
-    font-size:12px; padding:6px 12px; border-radius:8px;
-    cursor:pointer; min-height:34px;
+    background:rgba(0,0,0,.5); backdrop-filter:blur(6px);
+    border:1px solid rgba(255,255,255,.15); color:#F5F5F0;
+    font-size:12px; padding:6px 12px; border-radius:8px; cursor:pointer;
   }
-  #positionText { font-size:11px; color:rgba(245,245,240,.65); }
+  #positionText { font-size:11px; color:rgba(245,245,240,.6); }
 
-  /* ===== カメラペイン ===== */
+  /* カメラペイン */
   video#video {
     position:absolute; inset:0; width:100%; height:100%;
     object-fit:cover; background:#000;
@@ -145,7 +139,7 @@
     border:2px dashed rgba(255,255,255,.55); border-radius:50%;
   }
 
-  /* ===== 下部コントロール ===== */
+  /* 下部コントロール */
   .controls {
     display:flex; justify-content:center; gap:12px;
     padding:12px 16px calc(12px + env(safe-area-inset-bottom));
@@ -195,13 +189,11 @@
   <div id="camera-screen" hidden>
     <div id="stage">
 
-      <!-- 見本ペイン -->
       <div class="pane" id="samplePane">
-        <canvas id="sampleCanvas"></canvas>
+        <img id="sampleImg" src="" alt="">
         <div class="sample-label" id="sampleLabel"></div>
         <div id="setDisplay"></div>
 
-        <!-- GIF操作：右下縦 -->
         <div id="gifCtrl">
           <button class="gif-btn" id="gifSlowBtn">🐢</button>
           <button class="gif-btn active" id="gifPlayBtn">⏸</button>
@@ -209,24 +201,21 @@
           <div id="speedLabel">標準</div>
         </div>
 
-        <!-- 前へ・次へ：左下 -->
         <div id="sampleNav">
-          <button class="nav-btn" id="prevBtn">前へ</button>
+          <button class="nav-btn" id="prevBtn">◀ 前へ</button>
           <span id="positionText">1 / 8</span>
-          <button class="nav-btn" id="nextBtn">次へ</button>
+          <button class="nav-btn" id="nextBtn">次へ ▶</button>
         </div>
       </div>
 
-      <!-- 境界スライダー -->
       <div id="divider"></div>
 
-      <!-- カメラペイン -->
       <div class="pane" id="cameraPane">
         <video id="video" autoplay playsinline muted></video>
         <div id="guide-overlay" hidden><div class="oval"></div></div>
       </div>
-    </div>
 
+    </div>
     <div class="controls">
       <button id="guideToggleBtn" class="btn-control">ガイド表示</button>
       <button id="settingBtn"     class="btn-control">設定変更</button>
@@ -243,7 +232,6 @@
 
 </div>
 <script>
-// ===== サンプル定義 =====
 const SAMPLES = [
   { file:'samples/01.gif', label:'開口－閉口' },
   { file:'samples/05.gif', label:'口唇の突出－引き（う・い）' },
@@ -259,169 +247,141 @@ const SAMPLES = [
 let repCount = 5, setCount = 2;
 const repValEl = document.getElementById('repVal');
 const setValEl = document.getElementById('setVal');
-document.getElementById('repMinusBtn').onclick = () => { if(repCount>1)  { repCount--; repValEl.textContent=repCount; } };
-document.getElementById('repPlusBtn').onclick  = () => { if(repCount<20) { repCount++; repValEl.textContent=repCount; } };
-document.getElementById('setMinusBtn').onclick = () => { if(setCount>1)  { setCount--; setValEl.textContent=setCount; } };
-document.getElementById('setPlusBtn').onclick  = () => { if(setCount<10) { setCount++; setValEl.textContent=setCount; } };
+document.getElementById('repMinusBtn').onclick = () => { if(repCount>1)  repCount--, repValEl.textContent=repCount; };
+document.getElementById('repPlusBtn').onclick  = () => { if(repCount<20) repCount++, repValEl.textContent=repCount; };
+document.getElementById('setMinusBtn').onclick = () => { if(setCount>1)  setCount--, setValEl.textContent=setCount; };
+document.getElementById('setPlusBtn').onclick  = () => { if(setCount<10) setCount++, setValEl.textContent=setCount; };
 
-// ===== DOM =====
-const startScreen  = document.getElementById('start-screen');
-const cameraScreen = document.getElementById('camera-screen');
-const errorScreen  = document.getElementById('error-screen');
-const stage        = document.getElementById('stage');
-const samplePane   = document.getElementById('samplePane');
-const cameraPane   = document.getElementById('cameraPane');
-const divider      = document.getElementById('divider');
-const video        = document.getElementById('video');
-const guideOverlay = document.getElementById('guide-overlay');
-const sampleCanvas = document.getElementById('sampleCanvas');
-const ctx          = sampleCanvas.getContext('2d');
-const sampleLabel  = document.getElementById('sampleLabel');
-const setDisplay   = document.getElementById('setDisplay');
-const positionText = document.getElementById('positionText');
-
-// ===== GIFフレーム制御 =====
-// SuperGIFを使わず、Imageタグで各フレームを管理する
-// 方法：offscreenImageを使い、一定間隔でcanvasに描画
-let gifImage    = new Image();
-let gifPaused   = false;
-let rafId       = null;
-let lastDraw    = 0;
-// speedMultiplier: 1=標準, 2=ゆっくり(半速), 0.5=はやい(2倍速)
-const SPEEDS    = [{label:'遅い×2', m:2},{label:'遅い', m:1.5},{label:'標準', m:1},{label:'早い', m:0.7}];
-let speedIdx    = 2; // 標準
-
-const speedLabel  = document.getElementById('speedLabel');
-const gifPlayBtn  = document.getElementById('gifPlayBtn');
-const gifSlowBtn  = document.getElementById('gifSlowBtn');
-const gifFastBtn  = document.getElementById('gifFastBtn');
-
-function drawFrame() {
-  if (!gifImage.complete || !gifImage.naturalWidth) return;
-  const cw = sampleCanvas.width  = samplePane.clientWidth;
-  const ch = sampleCanvas.height = samplePane.clientHeight;
-  const iw = gifImage.naturalWidth, ih = gifImage.naturalHeight;
-  const scale = Math.min(cw/iw, ch/ih);
-  const dw = iw*scale, dh = ih*scale;
-  ctx.clearRect(0,0,cw,ch);
-  ctx.fillStyle = '#05070a';
-  ctx.fillRect(0,0,cw,ch);
-  ctx.drawImage(gifImage, (cw-dw)/2, (ch-dh)/2, dw, dh);
-}
-
-// GIFはブラウザが自動でアニメーションするのでcanvasにrequestAnimationFrameで転写
-// 一時停止：gifImageのsrcをdataURLに固定し、アニメを止める
-let frozenDataUrl = null;
-
-function startGifLoop() {
-  if (rafId) cancelAnimationFrame(rafId);
-  function loop(ts) {
-    drawFrame();
-    if (!gifPaused) rafId = requestAnimationFrame(loop);
-  }
-  rafId = requestAnimationFrame(loop);
-}
+// ===== サンプル =====
+let sampleIndex = 0;
+const sampleImg   = document.getElementById('sampleImg');
+const sampleLabel = document.getElementById('sampleLabel');
+const setDisplay  = document.getElementById('setDisplay');
+const posText     = document.getElementById('positionText');
 
 function loadSample(idx) {
-  gifPaused = false;
-  gifPlayBtn.textContent = '⏸';
-  gifPlayBtn.classList.add('active');
-  frozenDataUrl = null;
-
+  sampleIndex = idx;
   const s = SAMPLES[idx];
-  sampleLabel.textContent  = s.label;
-  positionText.textContent = (idx+1) + ' / ' + SAMPLES.length;
-  setDisplay.textContent   = repCount + '回 × ' + setCount + 'セット';
-
-  gifImage = new Image();
-  gifImage.onload = () => { startGifLoop(); };
-  // キャッシュバスター付きで必ずリロード
-  gifImage.src = s.file + '?t=' + Date.now();
+  // GIFアニメをリセット：srcを空にしてから再セット
+  sampleImg.src = '';
+  sampleImg.src = s.file;
+  sampleLabel.textContent = s.label;
+  posText.textContent     = (idx+1) + ' / ' + SAMPLES.length;
+  setDisplay.textContent  = repCount + '回 × ' + setCount + 'セット';
+  // 再生中状態に戻す
+  gifPaused = false;
+  gifPlayBtn.classList.add('active');
+  gifPlayBtn.textContent = '⏸';
 }
 
-// 一時停止：canvas静止画にする
+document.getElementById('prevBtn').onclick = () => loadSample((sampleIndex-1+SAMPLES.length)%SAMPLES.length);
+document.getElementById('nextBtn').onclick = () => loadSample((sampleIndex+1)%SAMPLES.length);
+
+// ===== GIF 一時停止 =====
+// ブラウザのGIFアニメは直接止められないため
+// 一時停止時：imgをhideしてcanvasに静止画を描画
+// 再生時：canvasをhideしてimgを表示
+let gifPaused = false;
+const gifPlayBtn = document.getElementById('gifPlayBtn');
+const speedLabel = document.getElementById('speedLabel');
+
+// 一時停止用canvas
+const pauseCanvas = document.createElement('canvas');
+pauseCanvas.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;object-fit:contain;background:#05070a;display:none;';
+document.getElementById('samplePane').appendChild(pauseCanvas);
+const pCtx = pauseCanvas.getContext('2d');
+
 gifPlayBtn.onclick = () => {
   if (!gifPaused) {
-    // 一時停止：現在のcanvasをそのままキープ、ループ停止
+    // 一時停止：imgの現在フレームをcanvasに焼き付けてimgを隠す
     gifPaused = true;
-    if (rafId) { cancelAnimationFrame(rafId); rafId = null; }
-    gifPlayBtn.textContent = '▶';
+    pauseCanvas.width  = sampleImg.naturalWidth  || sampleImg.clientWidth;
+    pauseCanvas.height = sampleImg.naturalHeight || sampleImg.clientHeight;
+    pCtx.drawImage(sampleImg, 0, 0);
+    pauseCanvas.style.display = 'block';
+    sampleImg.style.visibility = 'hidden';
     gifPlayBtn.classList.remove('active');
+    gifPlayBtn.textContent = '▶';
   } else {
-    // 再生再開：gifImageのsrcを付け直してアニメ再起動
+    // 再生再開
     gifPaused = false;
-    gifPlayBtn.textContent = '⏸';
+    pauseCanvas.style.display = 'none';
+    sampleImg.style.visibility = 'visible';
+    // GIFを最初から再生
+    const src = sampleImg.src;
+    sampleImg.src = '';
+    sampleImg.src = src;
     gifPlayBtn.classList.add('active');
-    const src = SAMPLES[sampleIndex].file + '?t=' + Date.now();
-    gifImage = new Image();
-    gifImage.onload = () => { startGifLoop(); };
-    gifImage.src = src;
+    gifPlayBtn.textContent = '⏸';
   }
 };
 
-// 速度変更：GIFアニメの速度をブラウザAPIで制御できないため、
-// canvas描画周期で間引く（遅く見せる）/ GIF自体を高速再ロード（速く）
-// 実用的な方法：遅い→canvasをたまにしか更新しない、速い→通常
-let slowInterval = null;
+// ===== GIF 速度 =====
+// GIFの速度はCSSアニメで直接変えられないが
+// imgを非表示にして一定間隔でcanvasに描画する方式でスロー再生を実現
+const SPEEDS = [
+  { label:'遅い×2', interval:200 },
+  { label:'ゆっくり', interval:120 },
+  { label:'標準',   interval:0   }, // 0=imgそのまま
+  { label:'はやい', interval:0   }, // GIF自体を速くはできないため標準と同じ
+];
+let speedIdx = 2;
+let slowTimer = null;
+const slowCanvas = document.createElement('canvas');
+slowCanvas.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;object-fit:contain;background:#05070a;display:none;';
+document.getElementById('samplePane').appendChild(slowCanvas);
+const sCtx = slowCanvas.getContext('2d');
 
 function applySpeed() {
   speedLabel.textContent = SPEEDS[speedIdx].label;
-  const m = SPEEDS[speedIdx].m;
+  if (slowTimer) { clearInterval(slowTimer); slowTimer=null; }
 
-  if (slowInterval) { clearInterval(slowInterval); slowInterval = null; }
-  if (rafId) { cancelAnimationFrame(rafId); rafId = null; }
-  if (gifPaused) return;
-
-  if (m <= 1) {
-    // 標準以上（速い）：rAFで毎フレーム描画
-    startGifLoop();
+  const interval = SPEEDS[speedIdx].interval;
+  if (interval > 0 && !gifPaused) {
+    // スロー：imgは表示したまま、canvasに間引き描画してimgに重ねる
+    // 方式：imgを非表示、slowCanvasに一定間隔でdrawImage
+    sampleImg.style.visibility = 'hidden';
+    slowCanvas.style.display = 'block';
+    slowCanvas.width  = sampleImg.clientWidth;
+    slowCanvas.height = sampleImg.clientHeight;
+    slowTimer = setInterval(() => {
+      if (!gifPaused) {
+        sCtx.drawImage(sampleImg, 0, 0, slowCanvas.width, slowCanvas.height);
+      }
+    }, interval);
   } else {
-    // 遅い：一定間隔でcanvasに描画（間引き）
-    const ms = 80 * m; // m=1.5→120ms, m=2→160ms間隔
-    slowInterval = setInterval(() => {
-      if (!gifPaused) drawFrame();
-    }, ms);
+    // 標準・速い：slowCanvasを非表示、imgをそのまま表示
+    slowCanvas.style.display = 'none';
+    if (!gifPaused) sampleImg.style.visibility = 'visible';
   }
 }
 
-gifSlowBtn.onclick = () => { if(speedIdx>0)              { speedIdx--; applySpeed(); } };
-gifFastBtn.onclick = () => { if(speedIdx<SPEEDS.length-1){ speedIdx++; applySpeed(); } };
-
-// ===== サンプルナビ =====
-let sampleIndex = 0;
-document.getElementById('prevBtn').onclick = () => {
-  sampleIndex = (sampleIndex - 1 + SAMPLES.length) % SAMPLES.length;
-  loadSample(sampleIndex);
-};
-document.getElementById('nextBtn').onclick = () => {
-  sampleIndex = (sampleIndex + 1) % SAMPLES.length;
-  loadSample(sampleIndex);
-};
+document.getElementById('gifSlowBtn').onclick = () => { if(speedIdx>0)              { speedIdx--; applySpeed(); } };
+document.getElementById('gifFastBtn').onclick = () => { if(speedIdx<SPEEDS.length-1){ speedIdx++; applySpeed(); } };
 
 // ===== 境界スライダー =====
-let splitRatio  = 0.42; // samplePaneの割合（縦方向）
-let isDragging  = false;
-let isLandscape = false;
+const stage      = document.getElementById('stage');
+const samplePane = document.getElementById('samplePane');
+const cameraPane = document.getElementById('cameraPane');
+const divider    = document.getElementById('divider');
+let splitRatio   = 0.42;
+let isDragging   = false;
 
-function updateDivider() {
-  isLandscape = window.innerWidth > window.innerHeight;
-  const stageRect = stage.getBoundingClientRect();
+function isLandscape() { return window.innerWidth > window.innerHeight; }
 
-  if (!isLandscape) {
-    // 縦並び：dividerは横線
-    const y = stageRect.height * splitRatio;
-    divider.style.cssText = `left:0;right:0;top:${y-3}px;height:6px;width:auto;bottom:auto;`;
-    samplePane.style.cssText = `height:${splitRatio*100}%;width:100%;`;
+function updateLayout() {
+  const land = isLandscape();
+  if (!land) {
+    // 縦：上下分割
+    samplePane.style.cssText = `height:${splitRatio*100}%;width:100%;flex:none;`;
     cameraPane.style.cssText = `height:${(1-splitRatio)*100}%;width:100%;flex:none;`;
+    divider.style.cssText    = `left:0;right:0;top:calc(${splitRatio*100}% - 3px);height:6px;width:100%;cursor:ns-resize;`;
   } else {
-    // 横並び：dividerは縦線
-    const x = stageRect.width * splitRatio;
-    divider.style.cssText = `top:0;bottom:0;left:${x-3}px;width:6px;height:auto;right:auto;`;
-    samplePane.style.cssText = `width:${splitRatio*100}%;height:100%;`;
+    // 横：左右分割
+    samplePane.style.cssText = `width:${splitRatio*100}%;height:100%;flex:none;`;
     cameraPane.style.cssText = `width:${(1-splitRatio)*100}%;height:100%;flex:none;`;
+    divider.style.cssText    = `top:0;bottom:0;left:calc(${splitRatio*100}% - 3px);width:6px;height:100%;cursor:ew-resize;`;
   }
-  // canvas再描画
-  drawFrame();
 }
 
 divider.addEventListener('pointerdown', e => {
@@ -429,26 +389,28 @@ divider.addEventListener('pointerdown', e => {
   divider.setPointerCapture(e.pointerId);
   e.preventDefault();
 });
-
 divider.addEventListener('pointermove', e => {
   if (!isDragging) return;
-  const rect = stage.getBoundingClientRect();
-  if (!isLandscape) {
-    splitRatio = Math.min(0.85, Math.max(0.15, (e.clientY - rect.top) / rect.height));
+  const r = stage.getBoundingClientRect();
+  if (!isLandscape()) {
+    splitRatio = Math.min(0.85, Math.max(0.15, (e.clientY - r.top) / r.height));
   } else {
-    splitRatio = Math.min(0.85, Math.max(0.15, (e.clientX - rect.left) / rect.width));
+    splitRatio = Math.min(0.85, Math.max(0.15, (e.clientX - r.left) / r.width));
   }
-  updateDivider();
+  updateLayout();
 });
-
 divider.addEventListener('pointerup',    () => { isDragging = false; });
 divider.addEventListener('pointercancel',() => { isDragging = false; });
-
-window.addEventListener('resize', updateDivider);
+window.addEventListener('resize', updateLayout);
 
 // ===== カメラ =====
-let currentStream = null;
-let guideVisible  = false;
+const startScreen  = document.getElementById('start-screen');
+const cameraScreen = document.getElementById('camera-screen');
+const errorScreen  = document.getElementById('error-screen');
+const video        = document.getElementById('video');
+const guideOverlay = document.getElementById('guide-overlay');
+let currentStream  = null;
+let guideVisible   = false;
 
 function showScreen(name) {
   startScreen.hidden  = name !== 'start';
@@ -458,15 +420,13 @@ function showScreen(name) {
 
 async function startCamera() {
   stopCamera();
-  sampleIndex = 0;
-  speedIdx    = 2;
+  speedIdx = 2;
   loadSample(0);
   showScreen('camera');
-  // divider初期化（DOMが表示されてから）
-  requestAnimationFrame(() => { updateDivider(); });
+  requestAnimationFrame(updateLayout);
   try {
     const stream = await navigator.mediaDevices.getUserMedia({ video:{ facingMode:'user' }, audio:false });
-    currentStream   = stream;
+    currentStream = stream;
     video.srcObject = stream;
     video.classList.add('mirrored');
   } catch(err) { showError(err); }
@@ -474,8 +434,7 @@ async function startCamera() {
 
 function stopCamera() {
   if (currentStream) { currentStream.getTracks().forEach(t=>t.stop()); currentStream=null; }
-  if (rafId)         { cancelAnimationFrame(rafId); rafId=null; }
-  if (slowInterval)  { clearInterval(slowInterval); slowInterval=null; }
+  if (slowTimer)     { clearInterval(slowTimer); slowTimer=null; }
 }
 
 function showError(err) {
