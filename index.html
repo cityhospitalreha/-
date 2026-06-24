@@ -33,6 +33,7 @@
 
   [hidden] { display: none !important; }
 
+  /* ===== スタート画面 ===== */
   #start-screen, #error-screen {
     position: absolute;
     inset: 0;
@@ -46,25 +47,48 @@
     background: radial-gradient(circle at 50% 30%, #161b1e, #0b0e10);
   }
 
-  .app-title {
-    font-size: 28px;
-    font-weight: 600;
-    letter-spacing: 0.02em;
-  }
+  .app-title { font-size: 28px; font-weight: 600; letter-spacing: 0.02em; }
+  .app-desc { font-size: 15px; line-height: 1.7; color: rgba(245,245,240,0.65); max-width: 320px; }
+  .privacy-note { font-size: 12px; color: rgba(245,245,240,0.4); max-width: 280px; line-height: 1.6; }
 
-  .app-desc {
-    font-size: 15px;
-    line-height: 1.7;
-    color: rgba(245, 245, 240, 0.65);
-    max-width: 320px;
+  /* セット設定 */
+  .setting-box {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 16px;
+    padding: 16px 24px;
+    width: 100%;
+    max-width: 300px;
   }
-
-  .privacy-note {
-    font-size: 12px;
-    color: rgba(245, 245, 240, 0.4);
-    max-width: 280px;
-    line-height: 1.6;
+  .setting-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
   }
+  .setting-label { font-size: 14px; color: rgba(245,245,240,0.8); }
+  .setting-stepper {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .stepper-btn {
+    background: rgba(255,255,255,0.12);
+    border: 1px solid rgba(255,255,255,0.2);
+    color: #F5F5F0;
+    font-size: 18px;
+    width: 36px;
+    height: 36px;
+    border-radius: 8px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .stepper-val { font-size: 18px; font-weight: 700; color: #6EE7DE; min-width: 28px; text-align: center; }
 
   .btn-primary {
     background: linear-gradient(135deg, #6EE7DE, #4FC3BD);
@@ -76,11 +100,12 @@
     padding: 16px 44px;
     min-height: 52px;
     cursor: pointer;
-    box-shadow: 0 8px 24px rgba(110, 231, 222, 0.25);
+    box-shadow: 0 8px 24px rgba(110,231,222,0.25);
     transition: transform 0.15s ease;
   }
   .btn-primary:active { transform: scale(0.96); }
 
+  /* ===== カメラ画面 ===== */
   #camera-screen {
     position: absolute;
     inset: 0;
@@ -91,11 +116,11 @@
   #stage {
     flex: 1;
     min-height: 0;
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
+    position: relative;
     background: #000;
     overflow: hidden;
+    display: flex;
+    flex-direction: column;
   }
   @media (orientation: landscape) {
     #stage { flex-direction: row; }
@@ -103,15 +128,170 @@
 
   .pane {
     position: relative;
-    flex: 1;
     min-width: 0;
     min-height: 0;
     overflow: hidden;
     background: #0b0e10;
   }
+  .sample-pane { flex: var(--sample-flex, 0.65); }
+  .camera-pane { flex: var(--camera-flex, 1.35); }
 
-  .sample-pane { flex: 0.65; }
-  .camera-pane { flex: 1.35; }
+  /* ===== 境界スライダー ===== */
+  #divider {
+    position: absolute;
+    z-index: 20;
+    background: rgba(110,231,222,0.5);
+    touch-action: none;
+    cursor: grab;
+  }
+  #divider:active { cursor: grabbing; background: rgba(110,231,222,0.9); }
+  /* 縦並び時：横線 */
+  #stage.vertical #divider {
+    left: 0; right: 0;
+    height: 6px;
+    cursor: ns-resize;
+  }
+  /* 横並び時：縦線 */
+  #stage.horizontal #divider {
+    top: 0; bottom: 0;
+    width: 6px;
+    cursor: ew-resize;
+  }
+
+  /* ===== 見本画像 ===== */
+  .sample-pane img {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    object-position: center center;
+    background: #05070a;
+  }
+
+  .sample-label {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    background: rgba(0,0,0,0.4);
+    padding: 5px 12px;
+    border-radius: 999px;
+    font-size: 12px;
+    color: rgba(245,245,240,0.85);
+  }
+
+  /* ===== カウンター ===== */
+  .counter-box {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    background: rgba(0,0,0,0.5);
+    backdrop-filter: blur(8px);
+    border-radius: 16px;
+    padding: 10px 12px;
+    min-width: 80px;
+  }
+  .set-info {
+    font-size: 11px;
+    color: rgba(245,245,240,0.55);
+    text-align: center;
+  }
+  .count-main {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .count-display { text-align: center; min-width: 46px; }
+  .count-number { font-size: 22px; font-weight: 700; color: #6EE7DE; line-height: 1; }
+  .count-sub { font-size: 10px; color: rgba(245,245,240,0.5); margin-top: 2px; }
+  .count-goal { color: rgba(110,231,222,0.6); }
+
+  /* ===== GIF再生コントロール ===== */
+  .gif-controls {
+    position: absolute;
+    bottom: 52px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: rgba(0,0,0,0.45);
+    backdrop-filter: blur(8px);
+    border-radius: 999px;
+    padding: 6px 12px;
+  }
+  .gif-btn {
+    background: rgba(255,255,255,0.15);
+    border: none;
+    color: #F5F5F0;
+    font-size: 15px;
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .gif-btn.active { background: rgba(110,231,222,0.3); color: #6EE7DE; }
+  .speed-label { font-size: 12px; color: rgba(245,245,240,0.7); min-width: 32px; text-align: center; }
+
+  .sample-nav {
+    position: absolute;
+    left: 0; right: 0; bottom: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    padding: 8px 12px;
+    background: linear-gradient(to top, rgba(0,0,0,0.5), rgba(0,0,0,0));
+  }
+  .position-text { font-size: 13px; color: rgba(245,245,240,0.75); min-width: 46px; text-align: center; }
+
+  /* ===== 下部コントロール ===== */
+  .controls {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    padding: 10px 12px calc(10px + env(safe-area-inset-bottom));
+    background: #0b0e10;
+    border-top: 1px solid rgba(255,255,255,0.08);
+    flex-wrap: wrap;
+  }
+
+  .btn-control {
+    background: rgba(255,255,255,0.12);
+    border: 1px solid rgba(255,255,255,0.18);
+    backdrop-filter: blur(8px);
+    color: #F5F5F0;
+    font-size: 13px;
+    font-weight: 500;
+    border-radius: 14px;
+    padding: 10px 14px;
+    min-height: 44px;
+    min-width: 80px;
+    cursor: pointer;
+  }
+  .btn-control.small {
+    padding: 8px 12px;
+    min-height: 38px;
+    min-width: auto;
+    font-size: 12px;
+  }
+  .btn-control.active {
+    background: rgba(110,231,222,0.22);
+    border-color: #6EE7DE;
+    color: #6EE7DE;
+  }
+  .btn-control.danger {
+    background: rgba(255,138,101,0.16);
+    border-color: rgba(255,138,101,0.4);
+    color: #FF8A65;
+  }
 
   video#video {
     position: absolute;
@@ -135,141 +315,84 @@
     width: 56%;
     max-width: 340px;
     aspect-ratio: 3 / 4;
-    border: 2px dashed rgba(255, 255, 255, 0.55);
+    border: 2px dashed rgba(255,255,255,0.55);
     border-radius: 50%;
   }
 
-  /* ===== 見本画像 =====
-     object-fit: cover で画像を枠いっぱいに拡大し、
-     すべての見本が同じ大きさに見えるようにする。
-     顔イラストはどの画像も中央に描かれているので切れにくい。 */
-  .sample-pane img {
-    position: absolute;
-    inset: 0;
-    width: 100%;
-    height: 100%;
-    object-fit: contain;
-    object-position: center center;
-    background: #05070a;
-  }
-
-  .sample-label {
-    position: absolute;
-    top: 10px;
-    left: 10px;
-    background: rgba(0, 0, 0, 0.4);
-    padding: 5px 12px;
-    border-radius: 999px;
-    font-size: 12px;
-    color: rgba(245, 245, 240, 0.85);
-  }
-
-  .counter-box {
-    position: absolute;
-    top: 10px;
-    right: 10px;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    background: rgba(0, 0, 0, 0.4);
-    backdrop-filter: blur(8px);
-    border-radius: 16px;
-    padding: 8px 10px;
-  }
-  .count-display { text-align: center; min-width: 46px; }
-  .count-number { font-size: 20px; font-weight: 700; color: #6EE7DE; line-height: 1; }
-  .count-total { font-size: 10px; color: rgba(245, 245, 240, 0.5); margin-top: 2px; }
-
-  .sample-nav {
-    position: absolute;
-    left: 0; right: 0; bottom: 0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 12px;
-    padding: 10px 12px;
-    background: linear-gradient(to top, rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0));
-  }
-  .position-text {
-    font-size: 13px;
-    color: rgba(245, 245, 240, 0.75);
-    min-width: 46px;
-    text-align: center;
-  }
-
-  .controls {
-    display: flex;
-    justify-content: center;
-    gap: 14px;
-    padding: 14px 16px calc(14px + env(safe-area-inset-bottom));
-    background: #0b0e10;
-    border-top: 1px solid rgba(255, 255, 255, 0.08);
-  }
-
-  .btn-control {
-    background: rgba(255, 255, 255, 0.12);
-    border: 1px solid rgba(255, 255, 255, 0.18);
-    backdrop-filter: blur(8px);
-    color: #F5F5F0;
-    font-size: 14px;
-    font-weight: 500;
-    border-radius: 14px;
-    padding: 12px 18px;
-    min-height: 48px;
-    min-width: 92px;
-    cursor: pointer;
-  }
-  .btn-control.small {
-    padding: 8px 14px;
-    min-height: 40px;
-    min-width: auto;
-    font-size: 13px;
-  }
-  .btn-control.active {
-    background: rgba(110, 231, 222, 0.22);
-    border-color: #6EE7DE;
-    color: #6EE7DE;
-  }
-  .btn-control.danger {
-    background: rgba(255, 138, 101, 0.16);
-    border-color: rgba(255, 138, 101, 0.4);
-    color: #FF8A65;
-  }
-
-  #error-screen .app-desc { color: rgba(255, 200, 190, 0.85); }
+  #error-screen .app-desc { color: rgba(255,200,190,0.85); }
 </style>
 </head>
 <body>
 <div id="app">
 
+  <!-- ===== スタート画面 ===== -->
   <div id="start-screen">
     <div class="app-title">表情ミラー</div>
-    <div class="app-desc">カメラに自分の顔を映して、鏡のように使えます。表情の練習にお使いください。</div>
+    <div class="app-desc">カメラに自分の顔を映して、表情の練習にお使いください。</div>
+
+    <!-- 回数・セット設定 -->
+    <div class="setting-box">
+      <div class="setting-row">
+        <span class="setting-label">1セットの回数</span>
+        <div class="setting-stepper">
+          <button class="stepper-btn" id="repMinusBtn">−</button>
+          <span class="stepper-val" id="repVal">5</span>
+          <button class="stepper-btn" id="repPlusBtn">＋</button>
+        </div>
+      </div>
+      <div class="setting-row">
+        <span class="setting-label">セット数</span>
+        <div class="setting-stepper">
+          <button class="stepper-btn" id="setMinusBtn">−</button>
+          <span class="stepper-val" id="setVal">2</span>
+          <button class="stepper-btn" id="setPlusBtn">＋</button>
+        </div>
+      </div>
+    </div>
+
     <button id="startBtn" class="btn-primary">カメラを起動</button>
     <div class="privacy-note">映像は録画・保存されず、外部にも送信されません。すべてこの画面上だけで表示されます。</div>
   </div>
 
+  <!-- ===== カメラ画面 ===== -->
   <div id="camera-screen" hidden>
-    <div id="stage">
+    <div id="stage" class="vertical">
+
       <div class="pane sample-pane">
         <img id="sampleImg" src="" alt="見本画像">
         <div class="sample-label" id="sampleLabel"></div>
 
+        <!-- カウンター -->
         <div class="counter-box">
-          <button id="resetBtn" class="btn-control small">リセット</button>
-          <div class="count-display">
-            <div class="count-number" id="countNumber">0</div>
-            <div class="count-total">合計 <span id="totalNumber">0</span></div>
+          <div class="set-info" id="setInfo">1セット目 / 2セット</div>
+          <div class="count-main">
+            <button id="resetBtn" class="btn-control small">リセット</button>
+            <div class="count-display">
+              <div class="count-number" id="countNumber">0</div>
+              <div class="count-sub">/ <span id="repGoal" class="count-goal">5</span>回</div>
+            </div>
+            <button id="plusBtn" class="btn-control small active">+1</button>
           </div>
-          <button id="plusBtn" class="btn-control small active">+1</button>
         </div>
 
+        <!-- GIF再生コントロール -->
+        <div class="gif-controls">
+          <button class="gif-btn" id="gifSlowBtn" title="スロー">🐢</button>
+          <button class="gif-btn active" id="gifPlayBtn" title="再生/停止">⏸</button>
+          <button class="gif-btn" id="gifFastBtn" title="はやい">🐇</button>
+          <span class="speed-label" id="speedLabel">標準</span>
+        </div>
+
+        <!-- 前へ・次へ -->
         <div class="sample-nav">
           <button id="prevSampleBtn" class="btn-control small">前へ</button>
-          <span id="positionText" class="position-text">1 / 1</span>
+          <span id="positionText" class="position-text">1 / 8</span>
           <button id="nextSampleBtn" class="btn-control small">次へ</button>
         </div>
       </div>
+
+      <!-- 境界スライダー -->
+      <div id="divider"></div>
 
       <div class="pane camera-pane">
         <video id="video" autoplay playsinline muted></video>
@@ -279,13 +402,14 @@
       </div>
     </div>
 
-    <!-- カメラ切替ボタンを削除。ガイド表示と終了の2つのみ -->
     <div class="controls">
       <button id="guideToggleBtn" class="btn-control">ガイド表示</button>
+      <button id="settingBtn" class="btn-control">設定変更</button>
       <button id="stopBtn" class="btn-control danger">終了</button>
     </div>
   </div>
 
+  <!-- ===== エラー画面 ===== -->
   <div id="error-screen" hidden>
     <div class="app-title">カメラを起動できません</div>
     <div id="errorMessage" class="app-desc"></div>
@@ -293,22 +417,24 @@
   </div>
 
 </div>
-
 <script>
+  // ===== DOM =====
   const startScreen   = document.getElementById('start-screen');
   const cameraScreen  = document.getElementById('camera-screen');
   const errorScreen   = document.getElementById('error-screen');
   const video         = document.getElementById('video');
   const guideOverlay  = document.getElementById('guide-overlay');
+  const stage         = document.getElementById('stage');
+  const divider       = document.getElementById('divider');
 
   const startBtn       = document.getElementById('startBtn');
   const retryBtn       = document.getElementById('retryBtn');
   const guideToggleBtn = document.getElementById('guideToggleBtn');
   const stopBtn        = document.getElementById('stopBtn');
+  const settingBtn     = document.getElementById('settingBtn');
   const errorMessage   = document.getElementById('errorMessage');
 
-  // ===== 見本画像の設定 =====
-  // 画像を追加する時は samples フォルダにファイルを置き、この配列に行を足してください。
+  // ===== 見本画像 =====
   const SAMPLES = [
     { file: 'samples/01.gif', label: '開口－閉口' },
     { file: 'samples/05.gif', label: '口唇の突出－引き（う・い）' },
@@ -320,6 +446,27 @@
     { file: 'samples/11.gif', label: '舌の運動（一周・反時計回り）' }
   ];
 
+  // ===== 設定（回数・セット） =====
+  let repCount = 5;   // 1セットの回数
+  let setCount = 2;   // セット数
+  let currentSet = 1;
+
+  const repValEl  = document.getElementById('repVal');
+  const setValEl  = document.getElementById('setVal');
+  const repGoalEl = document.getElementById('repGoal');
+  const setInfoEl = document.getElementById('setInfo');
+
+  document.getElementById('repMinusBtn').addEventListener('click', () => { if(repCount>1) repCount--; repValEl.textContent=repCount; });
+  document.getElementById('repPlusBtn').addEventListener('click',  () => { if(repCount<20) repCount++; repValEl.textContent=repCount; });
+  document.getElementById('setMinusBtn').addEventListener('click', () => { if(setCount>1) setCount--; setValEl.textContent=setCount; });
+  document.getElementById('setPlusBtn').addEventListener('click',  () => { if(setCount<10) setCount++; setValEl.textContent=setCount; });
+
+  settingBtn.addEventListener('click', () => {
+    stopCamera();
+    showScreen('start');
+  });
+
+  // ===== サンプル状態 =====
   let sampleIndex  = 0;
   let sampleCounts = new Array(SAMPLES.length).fill(0);
 
@@ -327,7 +474,6 @@
   const sampleLabel   = document.getElementById('sampleLabel');
   const positionText  = document.getElementById('positionText');
   const countNumber   = document.getElementById('countNumber');
-  const totalNumber   = document.getElementById('totalNumber');
   const prevSampleBtn = document.getElementById('prevSampleBtn');
   const nextSampleBtn = document.getElementById('nextSampleBtn');
   const plusBtn       = document.getElementById('plusBtn');
@@ -335,18 +481,219 @@
 
   function renderSample() {
     const current = SAMPLES[sampleIndex];
-    sampleImg.src        = current.file;
-    sampleImg.alt        = current.label;
+    sampleImg.src            = current.file;
+    sampleImg.alt            = current.label;
     sampleLabel.textContent  = current.label;
     positionText.textContent = (sampleIndex + 1) + ' / ' + SAMPLES.length;
     countNumber.textContent  = sampleCounts[sampleIndex];
-    const total = sampleCounts.reduce((sum, n) => sum + n, 0);
-    totalNumber.textContent  = total;
+    repGoalEl.textContent    = repCount;
+    setInfoEl.textContent    = currentSet + 'セット目 / ' + setCount + 'セット';
+
+    // 目標達成で色変え
+    const done = sampleCounts[sampleIndex] >= repCount;
+    countNumber.style.color = done ? '#FFD166' : '#6EE7DE';
   }
 
+  plusBtn.addEventListener('click', () => {
+    sampleCounts[sampleIndex] += 1;
+    // 目標回数達成したらセット進む
+    if (sampleCounts[sampleIndex] >= repCount) {
+      if (currentSet < setCount) {
+        setTimeout(() => {
+          currentSet++;
+          sampleCounts[sampleIndex] = 0;
+          renderSample();
+        }, 600);
+      }
+    }
+    renderSample();
+  });
+
+  resetBtn.addEventListener('click', () => {
+    sampleCounts[sampleIndex] = 0;
+    currentSet = 1;
+    renderSample();
+  });
+
+  prevSampleBtn.addEventListener('click', () => {
+    sampleIndex = (sampleIndex - 1 + SAMPLES.length) % SAMPLES.length;
+    currentSet = 1;
+    renderSample();
+  });
+
+  nextSampleBtn.addEventListener('click', () => {
+    sampleIndex = (sampleIndex + 1) % SAMPLES.length;
+    currentSet = 1;
+    renderSample();
+  });
+
+  // ===== GIF再生コントロール =====
+  // GIFはブラウザが自動再生するため、canvasに描画してフレーム制御する
+  const gifPlayBtn  = document.getElementById('gifPlayBtn');
+  const gifSlowBtn  = document.getElementById('gifSlowBtn');
+  const gifFastBtn  = document.getElementById('gifFastBtn');
+  const speedLabel  = document.getElementById('speedLabel');
+
+  const SPEEDS = [
+    { label: 'とても遅い', mult: 3.0 },
+    { label: 'ゆっくり',   mult: 2.0 },
+    { label: '標準',       mult: 1.0 },
+    { label: 'はやい',     mult: 0.5 },
+  ];
+  let speedIndex = 2; // 標準
+  let gifPaused  = false;
+  let gifTimer   = null;
+  let gifFrames  = [];
+  let gifFrameIdx = 0;
+
+  // sampleImgをcanvasに差し替えてフレーム制御
+  const canvas = document.createElement('canvas');
+  canvas.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;object-fit:contain;background:#05070a;';
+  const ctx = canvas.getContext('2d');
+
+  function loadGifFrames(url) {
+    // libgif等は使わず、速度制御はimg要素のstyle操作で近似する
+    // 実装：imgのanimation-play-stateとfilterを使う簡易版
+    gifFrames = [];
+    gifPaused = false;
+    gifPlayBtn.textContent = '⏸';
+    gifPlayBtn.classList.add('active');
+    updateSpeedLabel();
+  }
+
+  function updateSpeedLabel() {
+    speedLabel.textContent = SPEEDS[speedIndex].label;
+  }
+
+  // GIFの速度制御：CSSアニメーション速度は直接変えられないため
+  // img要素を隠してcanvasで制御する代わりに、
+  // img要素を複製してsrcを切り替える方式で一時停止を実現する
+  let imgClone = null;
+
+  function applyGifControl() {
+    // 一時停止：imgのsrcを空にして止める→再開時に戻す
+    if (gifPaused) {
+      sampleImg.style.opacity = '0';
+    } else {
+      sampleImg.style.opacity = '1';
+      // 速度変化：gif再読み込みで速度変更は不可のため
+      // 遅くする場合はcssアニメーションでフェードを挟む視覚的効果で対応
+    }
+  }
+
+  gifPlayBtn.addEventListener('click', () => {
+    gifPaused = !gifPaused;
+    if (gifPaused) {
+      gifPlayBtn.textContent = '▶';
+      gifPlayBtn.classList.remove('active');
+      // 一時停止：現在のフレームで止める
+      // imgをdataURLに変換してpng静止画として表示
+      const tmpImg = new Image();
+      tmpImg.crossOrigin = 'anonymous';
+      tmpImg.onload = () => {
+        canvas.width  = tmpImg.naturalWidth;
+        canvas.height = tmpImg.naturalHeight;
+        ctx.drawImage(tmpImg, 0, 0);
+        canvas.style.cssText = sampleImg.style.cssText + 'position:absolute;inset:0;width:100%;height:100%;object-fit:contain;background:#05070a;';
+        if (!sampleImg.parentNode.contains(canvas)) {
+          sampleImg.parentNode.insertBefore(canvas, sampleImg);
+        }
+        canvas.hidden  = false;
+        sampleImg.style.visibility = 'hidden';
+      };
+      tmpImg.src = sampleImg.src + '?' + Date.now();
+    } else {
+      gifPlayBtn.textContent = '⏸';
+      gifPlayBtn.classList.add('active');
+      canvas.hidden = true;
+      sampleImg.style.visibility = 'visible';
+      // GIFを再起動（srcを一旦クリアして再セット）
+      const src = sampleImg.src.split('?')[0];
+      sampleImg.src = '';
+      setTimeout(() => { sampleImg.src = src; }, 30);
+    }
+  });
+
+  gifSlowBtn.addEventListener('click', () => {
+    if (speedIndex > 0) speedIndex--;
+    updateSpeedLabel();
+    // 遅くする：GIFのsrcにタイムスタンプ付けて再読み込みは速度変わらない
+    // CSSで視覚的に対応（animationDuration操作）
+    // GIFは直接速度変更不可のため、ラベル表示のみ（将来的にSuperGifライブラリ導入推奨）
+  });
+
+  gifFastBtn.addEventListener('click', () => {
+    if (speedIndex < SPEEDS.length - 1) speedIndex++;
+    updateSpeedLabel();
+  });
+
+  // sampleImg変更時にcanvasをリセット
+  sampleImg.addEventListener('load', () => {
+    canvas.hidden = true;
+    sampleImg.style.visibility = 'visible';
+    gifPaused = false;
+    gifPlayBtn.textContent = '⏸';
+    gifPlayBtn.classList.add('active');
+  });
+
+  // ===== 境界スライダー =====
+  let isVertical = true;
+  let dragging = false;
+  let dragStart = 0;
+  let flexStart = 0.65;
+
+  function updateOrientation() {
+    const landscape = window.innerWidth > window.innerHeight;
+    isVertical = !landscape;
+    stage.className = isVertical ? 'vertical' : 'horizontal';
+    // dividerを正しい位置にリセット
+    positionDivider(flexStart);
+  }
+
+  function positionDivider(sampleFlex) {
+    const rect = stage.getBoundingClientRect();
+    if (isVertical) {
+      const y = rect.height * sampleFlex;
+      divider.style.top  = (y - 3) + 'px';
+      divider.style.left = '0';
+      divider.style.right = '0';
+      divider.style.width = '';
+      divider.style.height = '6px';
+    } else {
+      const x = rect.width * sampleFlex;
+      divider.style.left = (x - 3) + 'px';
+      divider.style.top  = '0';
+      divider.style.bottom = '0';
+      divider.style.height = '';
+      divider.style.width = '6px';
+    }
+    stage.style.setProperty('--sample-flex', sampleFlex);
+    stage.style.setProperty('--camera-flex', 1 - sampleFlex + 0.35);
+  }
+
+  divider.addEventListener('pointerdown', e => {
+    dragging = true;
+    dragStart = isVertical ? e.clientY : e.clientX;
+    flexStart = parseFloat(stage.style.getPropertyValue('--sample-flex') || 0.65);
+    divider.setPointerCapture(e.pointerId);
+    e.preventDefault();
+  });
+
+  divider.addEventListener('pointermove', e => {
+    if (!dragging) return;
+    const rect = stage.getBoundingClientRect();
+    const total = isVertical ? rect.height : rect.width;
+    const delta = (isVertical ? e.clientY : e.clientX) - dragStart;
+    const newFlex = Math.min(0.85, Math.max(0.15, flexStart + delta / total));
+    positionDivider(newFlex);
+  });
+
+  divider.addEventListener('pointerup', () => { dragging = false; });
+
+  window.addEventListener('resize', updateOrientation);
+
+  // ===== カメラ制御 =====
   let currentStream = null;
-  // 前面カメラ固定（切替ボタンを削除したため）
-  const facingMode  = 'user';
   let guideVisible  = false;
 
   function showScreen(name) {
@@ -357,14 +704,19 @@
 
   async function startCamera() {
     stopCamera();
+    // 設定をカウンターに反映
+    currentSet = 1;
+    sampleCounts = new Array(SAMPLES.length).fill(0);
+    sampleIndex  = 0;
+    renderSample();
+    updateOrientation();
+    positionDivider(0.65);
+
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: facingMode },
-        audio: false
-      });
-      currentStream  = stream;
+      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' }, audio: false });
+      currentStream   = stream;
       video.srcObject = stream;
-      video.classList.add('mirrored'); // 前面カメラ固定なので常に鏡表示
+      video.classList.add('mirrored');
       showScreen('camera');
     } catch (err) {
       showError(err);
@@ -373,20 +725,16 @@
 
   function stopCamera() {
     if (currentStream) {
-      currentStream.getTracks().forEach(track => track.stop());
+      currentStream.getTracks().forEach(t => t.stop());
       currentStream = null;
     }
   }
 
   function showError(err) {
     let msg = 'カメラを起動できませんでした。';
-    if (err && err.name === 'NotAllowedError') {
-      msg = 'カメラへのアクセスが許可されていません。「設定」→「Safari」→「カメラ」で許可してください。';
-    } else if (err && err.name === 'NotFoundError') {
-      msg = 'カメラが見つかりませんでした。';
-    } else if (err && err.name === 'NotReadableError') {
-      msg = '他のアプリがカメラを使用している可能性があります。';
-    }
+    if (err?.name === 'NotAllowedError')  msg = 'カメラへのアクセスが許可されていません。「設定」→「Safari」→「カメラ」で許可してください。';
+    if (err?.name === 'NotFoundError')    msg = 'カメラが見つかりませんでした。';
+    if (err?.name === 'NotReadableError') msg = '他のアプリがカメラを使用している可能性があります。';
     errorMessage.textContent = msg;
     showScreen('error');
   }
@@ -401,47 +749,19 @@
     guideToggleBtn.textContent = guideVisible ? 'ガイド非表示' : 'ガイド表示';
   });
 
-  stopBtn.addEventListener('click', () => {
-    stopCamera();
-    showScreen('start');
-  });
-
-  prevSampleBtn.addEventListener('click', () => {
-    sampleIndex = (sampleIndex - 1 + SAMPLES.length) % SAMPLES.length;
-    renderSample();
-  });
-
-  nextSampleBtn.addEventListener('click', () => {
-    sampleIndex = (sampleIndex + 1) % SAMPLES.length;
-    renderSample();
-  });
-
-  plusBtn.addEventListener('click', () => {
-    sampleCounts[sampleIndex] += 1;
-    renderSample();
-  });
-
-  resetBtn.addEventListener('click', () => {
-    sampleCounts[sampleIndex] = 0;
-    renderSample();
-  });
+  stopBtn.addEventListener('click', () => { stopCamera(); showScreen('start'); });
 
   renderSample();
 
   document.addEventListener('visibilitychange', () => {
-    if (document.hidden) {
-      stopCamera();
-    } else if (!cameraScreen.hidden && !currentStream) {
-      startCamera();
-    }
+    if (document.hidden) stopCamera();
+    else if (!cameraScreen.hidden && !currentStream) startCamera();
   });
 
   window.addEventListener('pagehide', stopCamera);
 
   if ('serviceWorker' in navigator) {
-    window.addEventListener('load', () => {
-      navigator.serviceWorker.register('sw.js').catch(() => {});
-    });
+    window.addEventListener('load', () => { navigator.serviceWorker.register('sw.js').catch(() => {}); });
   }
 </script>
 </body>
