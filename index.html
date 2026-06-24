@@ -197,7 +197,6 @@
         <div id="gifCtrl">
           <button class="gif-btn" id="gifSlowBtn">🐢</button>
           <button class="gif-btn active" id="gifPlayBtn">⏸</button>
-          <button class="gif-btn" id="gifFastBtn">🐇</button>
           <div id="speedLabel">標準</div>
         </div>
 
@@ -320,10 +319,9 @@ gifPlayBtn.onclick = () => {
 // GIFの速度はCSSアニメで直接変えられないが
 // imgを非表示にして一定間隔でcanvasに描画する方式でスロー再生を実現
 const SPEEDS = [
-  { label:'遅い×2', interval:200 },
+  { label:'遅い×2',  interval:200 },
   { label:'ゆっくり', interval:120 },
-  { label:'標準',   interval:0   }, // 0=imgそのまま
-  { label:'はやい', interval:0   }, // GIF自体を速くはできないため標準と同じ
+  { label:'標準',    interval:0   },
 ];
 let speedIdx = 2;
 let slowTimer = null;
@@ -356,8 +354,11 @@ function applySpeed() {
   }
 }
 
-document.getElementById('gifSlowBtn').onclick = () => { if(speedIdx>0)              { speedIdx--; applySpeed(); } };
-document.getElementById('gifFastBtn').onclick = () => { if(speedIdx<SPEEDS.length-1){ speedIdx++; applySpeed(); } };
+// 🐢 押すたびに 標準→ゆっくり→遅い×2→標準 とトグル
+document.getElementById('gifSlowBtn').onclick = () => {
+  speedIdx = (speedIdx - 1 + SPEEDS.length) % SPEEDS.length;
+  applySpeed();
+};
 
 // ===== 境界スライダー =====
 const stage      = document.getElementById('stage');
