@@ -98,6 +98,20 @@
     box-shadow:0 2px 8px rgba(0,0,0,.3);
   }
 
+  /* 発音文字表示：中央 ★今回追加★
+     開口や口唇の動きに合わせて「あ」「ん」等の文字を
+     大きく切り替え表示するための要素 */
+  #charDisplay {
+    position:absolute; left:50%; top:54%; transform:translate(-50%,-50%);
+    background:rgba(0,0,0,.45); backdrop-filter:blur(6px);
+    border-radius:24px; padding:4px 36px;
+    font-size:clamp(64px, 18vw, 130px); font-weight:800; color:#F5F5F0;
+    line-height:1.15; letter-spacing:.02em;
+    pointer-events:none; z-index:2;
+    text-shadow:0 4px 16px rgba(0,0,0,.5);
+  }
+  #charDisplay.hidden { display:none; }
+
   /* GIF操作：右下縦 */
   #gifCtrl {
     position:absolute; bottom:48px; right:8px;
@@ -195,6 +209,7 @@
         <img id="sampleImg" src="" alt="">
         <div class="sample-label" id="sampleLabel"></div>
         <div id="setDisplay"></div>
+        <div id="charDisplay" class="hidden"></div>
 
         <div id="gifCtrl">
           <button class="gif-btn" id="gifSlowBtn">🐢</button>
@@ -234,9 +249,9 @@
 </div>
 <script>
 const SAMPLES = [
-  { file:'samples/01.gif', label:'開口－閉口' },
-  { file:'samples/05.gif', label:'口唇の突出－引き（う・い）' },
-  { file:'samples/04.gif', label:'口唇の運動（あ・お・う）' },
+  { file:'samples/01.gif', label:'開口－閉口',               chars:['あ','ん'] },
+  { file:'samples/05.gif', label:'口唇の突出－引き（う・い）', chars:['う','い'] },
+  { file:'samples/04.gif', label:'口唇の運動（あ・お・う）',   chars:['あ','お','う'] },
   { file:'samples/02.gif', label:'舌の突出－引き' },
   { file:'samples/08.gif', label:'舌の左右' },
   { file:'samples/06.gif', label:'舌の上下' },
@@ -273,10 +288,57 @@ function loadSample(idx) {
   gifPaused = false;
   gifPlayBtn.classList.add('active');
   gifPlayBtn.textContent = '⏸';
+  // 発音文字表示をリセットして開始
+  updateCharDisplay();
+  startCharCycle();
 }
 
 document.getElementById('prevBtn').onclick = () => loadSample((sampleIndex-1+SAMPLES.length)%SAMPLES.length);
 document.getElementById('nextBtn').onclick = () => loadSample((sampleIndex+1)%SAMPLES.length);
+
+// ===== 発音文字の大きな表示（今回追加） =====
+// SAMPLES[].chars に設定した文字（例：['あ','ん']）を
+// 一定間隔で順番に切り替えて #charDisplay に表示する。
+// ブラウザからはGIFの内部コマ位置を読み取れないため、
+// 完全なコマ同期ではなく「タイマーによる一定間隔切り替え」で近似している。
+const charDisplay = document.getElementById('charDisplay');
+let charIdx = 0;
+let charTimer = null;
+
+// 標準速度での1文字あたりの表示時間（ミリ秒）。
+// 実際にiPadで見て早い/遅いと感じたら、この数値だけ変更すればOK。
+const CHAR_BASE_INTERVAL = 700;
+
+// 🐢ボタンの speedIdx（0=遅い×2, 1=ゆっくり, 2=標準）に対応した倍率。
+// 標準の3倍、2倍、1倍というイメージ。
+const CHAR_SPEED_MULT = [3, 2, 1];
+
+function updateCharDisplay() {
+  const chars = SAMPLES[sampleIndex].chars;
+  if (!chars || chars.length === 0) {
+    charDisplay.classList.add('hidden');
+    charDisplay.textContent = '';
+    return;
+  }
+  charDisplay.classList.remove('hidden');
+  charIdx = 0;
+  charDisplay.textContent = chars[charIdx];
+}
+
+function startCharCycle() {
+  stopCharCycle();
+  const chars = SAMPLES[sampleIndex].chars;
+  if (!chars || chars.length === 0) return;
+  const interval = CHAR_BASE_INTERVAL * CHAR_SPEED_MULT[speedIdx];
+  charTimer = setInterval(() => {
+    charIdx = (charIdx + 1) % chars.length;
+    charDisplay.textContent = chars[charIdx];
+  }, interval);
+}
+
+function stopCharCycle() {
+  if (charTimer) { clearInterval(charTimer); charTimer = null; }
+}
 
 // ===== GIF 一時停止 =====
 // ブラウザのGIFアニメは直接止められないため
@@ -292,17 +354,38 @@ pauseCanvas.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;ob
 document.getElementById('samplePane').appendChild(pauseCanvas);
 const pCtx = pauseCanvas.getContext('2d');
 
+// ===== canvasに縦横比を保って描画する共通関数 =====
+// SafariはCSSのobject-fit:containを<canvas>には適用してくれないため
+// （<img>には効くが<canvas>には効かないSafari側の制限）、
+// 「枠の中に収まるサイズ・位置」をJavaScript側で自分で計算して描画する。
+//   ctx    : 描画先のcanvasの2Dコンテキスト
+//   canvas : 描画先のcanvas要素（枠と同じピクセルサイズにしておく）
+//   img    : 描画元の画像（sampleImg）
+function drawImageContain(ctx, canvas, img) {
+  const iw = img.naturalWidth, ih = img.naturalHeight;
+  if (!iw || !ih) return; // 画像がまだ読み込まれていない場合は何もしない
+  const cw = canvas.width, ch = canvas.height;
+  const scale = Math.min(cw / iw, ch / ih);
+  const dw = iw * scale, dh = ih * scale;
+  const dx = (cw - dw) / 2, dy = (ch - dh) / 2;
+  ctx.fillStyle = '#05070a';
+  ctx.fillRect(0, 0, cw, ch);
+  ctx.drawImage(img, dx, dy, dw, dh);
+}
+
 gifPlayBtn.onclick = () => {
   if (!gifPaused) {
     // 一時停止：imgの現在フレームをcanvasに焼き付けてimgを隠す
     gifPaused = true;
-    pauseCanvas.width  = sampleImg.naturalWidth  || sampleImg.clientWidth;
-    pauseCanvas.height = sampleImg.naturalHeight || sampleImg.clientHeight;
-    pCtx.drawImage(sampleImg, 0, 0);
+    pauseCanvas.width  = sampleImg.clientWidth;
+    pauseCanvas.height = sampleImg.clientHeight;
+    drawImageContain(pCtx, pauseCanvas, sampleImg);
     pauseCanvas.style.display = 'block';
     sampleImg.style.visibility = 'hidden';
     gifPlayBtn.classList.remove('active');
     gifPlayBtn.textContent = '▶';
+    // 文字の切り替えも止める
+    stopCharCycle();
   } else {
     // 再生再開
     gifPaused = false;
@@ -314,6 +397,9 @@ gifPlayBtn.onclick = () => {
     sampleImg.src = src;
     gifPlayBtn.classList.add('active');
     gifPlayBtn.textContent = '⏸';
+    // 文字表示も最初から再開
+    updateCharDisplay();
+    startCharCycle();
   }
 };
 
@@ -342,17 +428,24 @@ function applySpeed() {
     // 方式：imgを非表示、slowCanvasに一定間隔でdrawImage
     sampleImg.style.visibility = 'hidden';
     slowCanvas.style.display = 'block';
+    // canvasの解像度は「枠のピクセルサイズ」に合わせ、
+    // 中身はdrawImageContain()で縦横比を保って描画する。
     slowCanvas.width  = sampleImg.clientWidth;
     slowCanvas.height = sampleImg.clientHeight;
     slowTimer = setInterval(() => {
       if (!gifPaused) {
-        sCtx.drawImage(sampleImg, 0, 0, slowCanvas.width, slowCanvas.height);
+        drawImageContain(sCtx, slowCanvas, sampleImg);
       }
     }, interval);
   } else {
     // 標準・速い：slowCanvasを非表示、imgをそのまま表示
     slowCanvas.style.display = 'none';
     if (!gifPaused) sampleImg.style.visibility = 'visible';
+  }
+
+  // 速度が変わったら、文字の切り替え間隔も合わせて更新
+  if (!gifPaused) {
+    startCharCycle();
   }
 }
 
@@ -402,9 +495,23 @@ divider.addEventListener('pointermove', e => {
   }
   updateLayout();
 });
-divider.addEventListener('pointerup',    () => { isDragging = false; });
+divider.addEventListener('pointerup',    () => { isDragging = false; refreshFrozenCanvases(); });
 divider.addEventListener('pointercancel',() => { isDragging = false; });
-window.addEventListener('resize', updateLayout);
+window.addEventListener('resize', () => { updateLayout(); refreshFrozenCanvases(); });
+
+// 画面回転や分割位置の変更で枠のサイズが変わったとき、
+// 一時停止中・スロー再生中のcanvasも新しいサイズに合わせて描き直す
+function refreshFrozenCanvases() {
+  if (gifPaused) {
+    pauseCanvas.width  = sampleImg.clientWidth;
+    pauseCanvas.height = sampleImg.clientHeight;
+    drawImageContain(pCtx, pauseCanvas, sampleImg);
+  } else if (SPEEDS[speedIdx].interval > 0) {
+    slowCanvas.width  = sampleImg.clientWidth;
+    slowCanvas.height = sampleImg.clientHeight;
+    drawImageContain(sCtx, slowCanvas, sampleImg);
+  }
+}
 
 // ===== カメラ =====
 const startScreen  = document.getElementById('start-screen');
@@ -438,6 +545,7 @@ async function startCamera() {
 function stopCamera() {
   if (currentStream) { currentStream.getTracks().forEach(t=>t.stop()); currentStream=null; }
   if (slowTimer)     { clearInterval(slowTimer); slowTimer=null; }
+  stopCharCycle();
 }
 
 function showError(err) {
