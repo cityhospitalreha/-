@@ -72,7 +72,10 @@
     touch-action:none;
   }
 
-  /* 見本ペイン */
+  /* 見本ペイン：上=画像エリア、下=文字バー の縦2段構成 */
+  #samplePane { display:flex; flex-direction:column; }
+  #sampleImageArea { position:relative; flex:1; min-height:0; overflow:hidden; background:#0b0e10; }
+
   #sampleImg {
     position:absolute; inset:0; width:100%; height:100%;
     object-fit:contain; object-position:center;
@@ -98,19 +101,19 @@
     box-shadow:0 2px 8px rgba(0,0,0,.3);
   }
 
-  /* 発音文字表示：中央 ★今回追加★
-     開口や口唇の動きに合わせて「あ」「ん」等の文字を
-     大きく切り替え表示するための要素 */
-  #charDisplay {
-    position:absolute; left:50%; top:54%; transform:translate(-50%,-50%);
-    background:rgba(0,0,0,.45); backdrop-filter:blur(6px);
-    border-radius:24px; padding:4px 36px;
-    font-size:clamp(64px, 18vw, 130px); font-weight:800; color:#F5F5F0;
-    line-height:1.15; letter-spacing:.02em;
-    pointer-events:none; z-index:2;
-    text-shadow:0 4px 16px rgba(0,0,0,.5);
+  /* 発音文字表示：画像エリアの下にある専用バー
+     顔の映像とは重ならない、独立したスペースに大きく表示する */
+  #charBar {
+    flex:0 0 auto;
+    display:flex; align-items:center; justify-content:center;
+    min-height:96px; padding:8px 12px;
+    background:#12171a; border-top:1px solid rgba(255,255,255,.08);
   }
-  #charDisplay.hidden { display:none; }
+  #charBar.hidden { display:none; }
+  #charText {
+    font-size:clamp(48px, 13vw, 96px); font-weight:800; color:#6EE7DE;
+    line-height:1; letter-spacing:.03em;
+  }
 
   /* GIF操作：右下縦 */
   #gifCtrl {
@@ -206,21 +209,27 @@
     <div id="stage">
 
       <div class="pane" id="samplePane">
-        <img id="sampleImg" src="" alt="">
-        <div class="sample-label" id="sampleLabel"></div>
-        <div id="setDisplay"></div>
-        <div id="charDisplay" class="hidden"></div>
+        <div id="sampleImageArea">
+          <img id="sampleImg" src="" alt="">
+          <div class="sample-label" id="sampleLabel"></div>
+          <div id="setDisplay"></div>
 
-        <div id="gifCtrl">
-          <button class="gif-btn" id="gifSlowBtn">🐢</button>
-          <button class="gif-btn active" id="gifPlayBtn">⏸</button>
-          <div id="speedLabel">標準</div>
+          <div id="gifCtrl">
+            <button class="gif-btn" id="gifSlowBtn">🐢</button>
+            <button class="gif-btn active" id="gifPlayBtn">⏸</button>
+            <div id="speedLabel">標準</div>
+          </div>
+
+          <div id="sampleNav">
+            <button class="nav-btn" id="prevBtn">◀ 前へ</button>
+            <span id="positionText">1 / 8</span>
+            <button class="nav-btn" id="nextBtn">次へ ▶</button>
+          </div>
         </div>
 
-        <div id="sampleNav">
-          <button class="nav-btn" id="prevBtn">◀ 前へ</button>
-          <span id="positionText">1 / 8</span>
-          <button class="nav-btn" id="nextBtn">次へ ▶</button>
+        <!-- 発音文字は画像の下の専用バーに表示（顔の映像には重ねない） -->
+        <div id="charBar" class="hidden">
+          <span id="charText"></span>
         </div>
       </div>
 
@@ -296,44 +305,49 @@ function loadSample(idx) {
 document.getElementById('prevBtn').onclick = () => loadSample((sampleIndex-1+SAMPLES.length)%SAMPLES.length);
 document.getElementById('nextBtn').onclick = () => loadSample((sampleIndex+1)%SAMPLES.length);
 
-// ===== 発音文字の大きな表示（今回追加） =====
+// ===== 発音文字の大きな表示 =====
 // SAMPLES[].chars に設定した文字（例：['あ','ん']）を
-// 一定間隔で順番に切り替えて #charDisplay に表示する。
+// 一定間隔で順番に切り替えて、画像の下の#charBarに表示する。
 // ブラウザからはGIFの内部コマ位置を読み取れないため、
 // 完全なコマ同期ではなく「タイマーによる一定間隔切り替え」で近似している。
-const charDisplay = document.getElementById('charDisplay');
+const charBar  = document.getElementById('charBar');
+const charText = document.getElementById('charText');
 let charIdx = 0;
 let charTimer = null;
 
-// 標準速度での1文字あたりの表示時間（ミリ秒）。
-// 実際にiPadで見て早い/遅いと感じたら、この数値だけ変更すればOK。
+// 1文字あたりの標準表示時間（ミリ秒）。
+// 種目によって口の動く速さが違う場合は、SAMPLES側の
+// charInterval に個別の数値を指定すると、そちらが優先される。
 const CHAR_BASE_INTERVAL = 700;
 
 // 🐢ボタンの speedIdx（0=遅い×2, 1=ゆっくり, 2=標準）に対応した倍率。
-// 標準の3倍、2倍、1倍というイメージ。
 const CHAR_SPEED_MULT = [3, 2, 1];
+
+function currentCharInterval() {
+  const base = SAMPLES[sampleIndex].charInterval || CHAR_BASE_INTERVAL;
+  return base * CHAR_SPEED_MULT[speedIdx];
+}
 
 function updateCharDisplay() {
   const chars = SAMPLES[sampleIndex].chars;
   if (!chars || chars.length === 0) {
-    charDisplay.classList.add('hidden');
-    charDisplay.textContent = '';
+    charBar.classList.add('hidden');
+    charText.textContent = '';
     return;
   }
-  charDisplay.classList.remove('hidden');
+  charBar.classList.remove('hidden');
   charIdx = 0;
-  charDisplay.textContent = chars[charIdx];
+  charText.textContent = chars[charIdx];
 }
 
 function startCharCycle() {
   stopCharCycle();
   const chars = SAMPLES[sampleIndex].chars;
   if (!chars || chars.length === 0) return;
-  const interval = CHAR_BASE_INTERVAL * CHAR_SPEED_MULT[speedIdx];
   charTimer = setInterval(() => {
     charIdx = (charIdx + 1) % chars.length;
-    charDisplay.textContent = chars[charIdx];
-  }, interval);
+    charText.textContent = chars[charIdx];
+  }, currentCharInterval());
 }
 
 function stopCharCycle() {
@@ -348,10 +362,10 @@ let gifPaused = false;
 const gifPlayBtn = document.getElementById('gifPlayBtn');
 const speedLabel = document.getElementById('speedLabel');
 
-// 一時停止用canvas
+// 一時停止用canvas（sampleImageAreaに重ねる。samplePane全体ではなく画像エリアだけ覆う）
 const pauseCanvas = document.createElement('canvas');
-pauseCanvas.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;object-fit:contain;background:#05070a;display:none;';
-document.getElementById('samplePane').appendChild(pauseCanvas);
+pauseCanvas.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;background:#05070a;display:none;';
+document.getElementById('sampleImageArea').appendChild(pauseCanvas);
 const pCtx = pauseCanvas.getContext('2d');
 
 // ===== canvasに縦横比を保って描画する共通関数 =====
@@ -375,13 +389,15 @@ function drawImageContain(ctx, canvas, img) {
 
 gifPlayBtn.onclick = () => {
   if (!gifPaused) {
-    // 一時停止：imgの現在フレームをcanvasに焼き付けてimgを隠す
+    // 一時停止：imgの現在フレームをcanvasに焼き付けて、canvasで画像の上を覆う
+    // ※ imgはvisibility:hiddenにしない。iPadのSafariは「非表示の画像」の
+    //   GIFアニメーションを止めてしまうため、隠すと裏で再生されなくなる。
+    //   imgは裏で表示したまま動かし続け、canvasを上に重ねて見た目だけ隠す。
     gifPaused = true;
     pauseCanvas.width  = sampleImg.clientWidth;
     pauseCanvas.height = sampleImg.clientHeight;
     drawImageContain(pCtx, pauseCanvas, sampleImg);
     pauseCanvas.style.display = 'block';
-    sampleImg.style.visibility = 'hidden';
     gifPlayBtn.classList.remove('active');
     gifPlayBtn.textContent = '▶';
     // 文字の切り替えも止める
@@ -390,7 +406,6 @@ gifPlayBtn.onclick = () => {
     // 再生再開
     gifPaused = false;
     pauseCanvas.style.display = 'none';
-    sampleImg.style.visibility = 'visible';
     // GIFを最初から再生
     const src = sampleImg.src;
     sampleImg.src = '';
@@ -404,8 +419,11 @@ gifPlayBtn.onclick = () => {
 };
 
 // ===== GIF 速度 =====
-// GIFの速度はCSSアニメで直接変えられないが
-// imgを非表示にして一定間隔でcanvasに描画する方式でスロー再生を実現
+// GIFの速度はCSSアニメで直接変えられないため、
+// imgは裏で普通に再生させたまま、一定間隔でcanvasに焼き付けて
+// その上に不透明に重ねることでスロー再生に見せる。
+// （imgをvisibility:hiddenで隠すと、iPad SafariがそのGIFの
+// 　アニメーションそのものを止めてしまうため、絶対に隠さない）
 const SPEEDS = [
   { label:'遅い×2',  interval:200 },
   { label:'ゆっくり', interval:120 },
@@ -414,8 +432,8 @@ const SPEEDS = [
 let speedIdx = 2;
 let slowTimer = null;
 const slowCanvas = document.createElement('canvas');
-slowCanvas.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;object-fit:contain;background:#05070a;display:none;';
-document.getElementById('samplePane').appendChild(slowCanvas);
+slowCanvas.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;background:#05070a;display:none;';
+document.getElementById('sampleImageArea').appendChild(slowCanvas);
 const sCtx = slowCanvas.getContext('2d');
 
 function applySpeed() {
@@ -424,12 +442,10 @@ function applySpeed() {
 
   const interval = SPEEDS[speedIdx].interval;
   if (interval > 0 && !gifPaused) {
-    // スロー：imgは表示したまま、canvasに間引き描画してimgに重ねる
-    // 方式：imgを非表示、slowCanvasに一定間隔でdrawImage
-    sampleImg.style.visibility = 'hidden';
+    // スロー：canvasの解像度を枠のピクセルサイズに合わせ、
+    // drawImageContain()で縦横比を保ちながら一定間隔で焼き付ける。
+    // imgは裏でそのまま動き続けている（見た目はcanvasが覆っている）。
     slowCanvas.style.display = 'block';
-    // canvasの解像度は「枠のピクセルサイズ」に合わせ、
-    // 中身はdrawImageContain()で縦横比を保って描画する。
     slowCanvas.width  = sampleImg.clientWidth;
     slowCanvas.height = sampleImg.clientHeight;
     slowTimer = setInterval(() => {
@@ -438,9 +454,8 @@ function applySpeed() {
       }
     }, interval);
   } else {
-    // 標準・速い：slowCanvasを非表示、imgをそのまま表示
+    // 標準・速い：slowCanvasを非表示にして、裏で動いているimgをそのまま見せる
     slowCanvas.style.display = 'none';
-    if (!gifPaused) sampleImg.style.visibility = 'visible';
   }
 
   // 速度が変わったら、文字の切り替え間隔も合わせて更新
