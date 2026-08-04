@@ -76,9 +76,8 @@
   #samplePane { display:flex; flex-direction:column; }
   #sampleImageArea { position:relative; flex:1; min-height:0; overflow:hidden; background:#0b0e10; }
 
-  #sampleImg {
+  #sampleCanvas {
     position:absolute; inset:0; width:100%; height:100%;
-    object-fit:contain; object-position:center;
     background:#05070a;
   }
 
@@ -210,7 +209,7 @@
 
       <div class="pane" id="samplePane">
         <div id="sampleImageArea">
-          <img id="sampleImg" src="" alt="">
+          <canvas id="sampleCanvas"></canvas>
           <div class="sample-label" id="sampleLabel"></div>
           <div id="setDisplay"></div>
 
@@ -257,6 +256,317 @@
 
 </div>
 <script>
+// ================================================================
+// 簡易GIFデコーダー＆自前プレーヤー
+// ----------------------------------------------------------------
+// <img>タグにGIFを表示させるとアニメーションの再生速度・一時停止を
+// ブラウザに完全に任せることになり、正確な制御ができない
+// （iPad Safariでは、隠れている/覆われている画像のGIFアニメーションを
+// 　勝手に止めてしまうことがあるため、一時停止からの再開やスロー再生が
+// 　安定しなかった）。
+// そこで、GIFファイルのバイト列を自分で解析し(decodeGif)、
+// 1コマずつ自分のタイマーでcanvasに描画するプレーヤー(GifPlayer)を使う。
+// こうすればアニメーションの進み方を完全に自分でコントロールできる。
+// ================================================================
+
+// GIFファイルのバイト列(Uint8Array)を解析して
+// { width, height, frames:[ {left,top,width,height,colorTable,indices,gce} ] }
+// の形に変換する関数。
+function decodeGif(buf) {
+  let p = 0;
+  const readByte = () => buf[p++];
+  const readWord = () => { const v = buf[p] | (buf[p + 1] << 8); p += 2; return v; };
+  const readBytes = (n) => { const s = buf.subarray(p, p + n); p += n; return s; };
+
+  const sig = String.fromCharCode(...readBytes(6));
+  if (sig.slice(0, 3) !== 'GIF') throw new Error('GIFファイルではありません');
+
+  const width = readWord();
+  const height = readWord();
+  const packed = readByte();
+  const gctFlag = (packed & 0x80) !== 0;
+  const gctSize = 2 << (packed & 0x07);
+  readByte(); // 背景色インデックス（未使用）
+  readByte(); // ピクセルアスペクト比（未使用）
+
+  function readColorTable(size) {
+    const table = [];
+    for (let i = 0; i < size; i++) table.push([readByte(), readByte(), readByte()]);
+    return table;
+  }
+  const gct = gctFlag ? readColorTable(gctSize) : null;
+
+  function readSubBlocks() {
+    const chunks = [];
+    let total = 0, size;
+    while ((size = readByte()) !== 0) {
+      const c = readBytes(size);
+      chunks.push(c);
+      total += size;
+    }
+    const out = new Uint8Array(total);
+    let o = 0;
+    for (const c of chunks) { out.set(c, o); o += c.length; }
+    return out;
+  }
+
+  // GIF独自のLZW展開（符号長が可変で、辞書がクリアコードで初期化される方式）
+  function lzwDecode(minCodeSize, data) {
+    const clearCode = 1 << minCodeSize;
+    const eoiCode = clearCode + 1;
+    let codeSize, dict;
+    function resetDict() {
+      dict = [];
+      for (let i = 0; i < clearCode; i++) dict[i] = [i];
+      dict[clearCode] = null;
+      dict[eoiCode] = null;
+      codeSize = minCodeSize + 1;
+    }
+    resetDict();
+
+    const output = [];
+    let bitBuffer = 0, bitCount = 0, pos = 0, prev = null;
+
+    function readCode() {
+      while (bitCount < codeSize) {
+        if (pos >= data.length) return eoiCode;
+        bitBuffer |= data[pos++] << bitCount;
+        bitCount += 8;
+      }
+      const code = bitBuffer & ((1 << codeSize) - 1);
+      bitBuffer >>= codeSize;
+      bitCount -= codeSize;
+      return code;
+    }
+
+    while (pos < data.length || bitCount >= codeSize) {
+      const code = readCode();
+      if (code === clearCode) { resetDict(); prev = null; continue; }
+      if (code === eoiCode) break;
+
+      let entry;
+      if (dict[code]) {
+        entry = dict[code];
+      } else if (code === dict.length && prev) {
+        entry = prev.concat([prev[0]]);
+      } else {
+        break;
+      }
+      for (const v of entry) output.push(v);
+
+      if (prev) {
+        dict.push(prev.concat([entry[0]]));
+        if (dict.length >= (1 << codeSize) && codeSize < 12) codeSize++;
+      }
+      prev = entry;
+    }
+    return output;
+  }
+
+  // インターレースGIFは行の並びが特殊なので、通常の上から順の並びに直す
+  function deinterlace(indices, w, h) {
+    const out = new Array(indices.length);
+    const passes = [[0, 8], [4, 8], [2, 4], [1, 2]];
+    let srcRow = 0;
+    for (const [start, step] of passes) {
+      for (let y = start; y < h; y += step) {
+        const so = srcRow * w, do_ = y * w;
+        for (let x = 0; x < w; x++) out[do_ + x] = indices[so + x];
+        srcRow++;
+      }
+    }
+    return out;
+  }
+
+  const frames = [];
+  let gce = null; // 直前に読んだGraphic Control Extension（次のコマの表示時間などを持つ）
+
+  while (p < buf.length) {
+    const blockType = readByte();
+    if (blockType === 0x21) { // 拡張ブロック
+      const label = readByte();
+      if (label === 0xF9) { // Graphic Control Extension（コマの表示時間・透過色）
+        readByte(); // ブロックサイズ（常に4）
+        const packedGce = readByte();
+        const delay = readWord();
+        const transparentIndex = readByte();
+        readByte(); // ブロック終端
+        gce = {
+          disposal: (packedGce >> 2) & 0x07,
+          transparentFlag: (packedGce & 0x01) !== 0,
+          transparentIndex,
+          delay: delay * 10, // 1/100秒 → ミリ秒に変換
+        };
+      } else {
+        readSubBlocks(); // コメント等、使わない拡張は読み飛ばす
+      }
+    } else if (blockType === 0x2C) { // 画像本体（1コマ分）
+      const left = readWord(), top = readWord();
+      const fw = readWord(), fh = readWord();
+      const packedImg = readByte();
+      const lctFlag = (packedImg & 0x80) !== 0;
+      const interlace = (packedImg & 0x40) !== 0;
+      const lctSize = 2 << (packedImg & 0x07);
+      const colorTable = lctFlag ? readColorTable(lctSize) : gct;
+
+      const minCodeSize = readByte();
+      const imgData = readSubBlocks();
+      let indices = lzwDecode(minCodeSize, imgData);
+      if (interlace) indices = deinterlace(indices, fw, fh);
+
+      frames.push({
+        left, top, width: fw, height: fh,
+        colorTable, indices,
+        gce: gce || { disposal: 0, transparentFlag: false, transparentIndex: -1, delay: 100 },
+      });
+      gce = null;
+    } else if (blockType === 0x3B) { // トレーラー（ファイル終端）
+      break;
+    } else {
+      break; // 未対応のブロックに来たら安全のため打ち切る
+    }
+  }
+
+  return { width, height, frames };
+}
+
+// GIFを読み込んで、指定したcanvasに1コマずつ描画するプレーヤー
+class GifPlayer {
+  constructor(canvas) {
+    this.canvas = canvas;
+    this.ctx = canvas.getContext('2d');
+    // GIF本来の解像度で組み立てるための、画面には出さない作業用canvas
+    this.off = document.createElement('canvas');
+    this.offCtx = this.off.getContext('2d');
+    this.gif = null;
+    this.frameIndex = 0;
+    this.playing = false;
+    this.rafId = null;
+    this.lastTime = 0;
+    this.speedMult = 1;         // 1=標準、2=2倍遅い、3=3倍遅い
+    this._imageData = null;
+    this._restoreSnapshot = null;
+    this._loadToken = 0;        // 連打で読み込みが重なった時の対策
+  }
+
+  async load(url) {
+    const token = ++this._loadToken;
+    this.pause();
+    const res = await fetch(url);
+    if (!res.ok) throw new Error('GIF取得失敗: ' + url);
+    const buf = new Uint8Array(await res.arrayBuffer());
+    const gif = decodeGif(buf);
+    if (token !== this._loadToken) return; // 途中で次の読み込みが始まっていたら破棄
+
+    this.gif = gif;
+    this.off.width = gif.width;
+    this.off.height = gif.height;
+    this.frameIndex = 0;
+    this._restoreSnapshot = null;
+    this._composeFrame(0, true);
+    this.resize();
+  }
+
+  // idx番目のコマを、これまでの合成結果(this._imageData)に重ねて確定させる
+  _composeFrame(idx, reset) {
+    if (reset) this._imageData = this.offCtx.createImageData(this.gif.width, this.gif.height);
+    const frame = this.gif.frames[idx];
+    const buf = this._imageData.data;
+    const gw = this.gif.width;
+
+    if (frame.gce.disposal === 3 && !this._restoreSnapshot) {
+      this._restoreSnapshot = new Uint8ClampedArray(buf); // 「前の状態に戻す」用に退避
+    }
+
+    for (let y = 0; y < frame.height; y++) {
+      for (let x = 0; x < frame.width; x++) {
+        const ci = frame.indices[y * frame.width + x];
+        if (frame.gce.transparentFlag && ci === frame.gce.transparentIndex) continue;
+        const c = frame.colorTable && frame.colorTable[ci];
+        if (!c) continue;
+        const px = ((frame.top + y) * gw + (frame.left + x)) * 4;
+        buf[px] = c[0]; buf[px + 1] = c[1]; buf[px + 2] = c[2]; buf[px + 3] = 255;
+      }
+    }
+    this.offCtx.putImageData(this._imageData, 0, 0);
+
+    // 次コマを描く前に、このコマの後始末（disposal method）を行う
+    if (frame.gce.disposal === 2) {
+      for (let y = 0; y < frame.height; y++) {
+        for (let x = 0; x < frame.width; x++) {
+          const px = ((frame.top + y) * gw + (frame.left + x)) * 4;
+          buf[px + 3] = 0;
+        }
+      }
+    } else if (frame.gce.disposal === 3 && this._restoreSnapshot) {
+      buf.set(this._restoreSnapshot);
+      this._restoreSnapshot = null;
+    }
+  }
+
+  // 作業用canvasの内容を、縦横比を保ったまま表示用canvasへ描く
+  render() {
+    if (!this.gif) return;
+    const cw = this.canvas.width, ch = this.canvas.height;
+    const gw = this.gif.width, gh = this.gif.height;
+    if (!cw || !ch) return;
+    const scale = Math.min(cw / gw, ch / gh);
+    const dw = gw * scale, dh = gh * scale;
+    const dx = (cw - dw) / 2, dy = (ch - dh) / 2;
+    this.ctx.fillStyle = '#05070a';
+    this.ctx.fillRect(0, 0, cw, ch);
+    this.ctx.drawImage(this.off, dx, dy, dw, dh);
+  }
+
+  // 表示先のピクセルサイズが変わったとき（画面回転・分割線ドラッグ等）に呼ぶ
+  resize() {
+    this.canvas.width = this.canvas.clientWidth;
+    this.canvas.height = this.canvas.clientHeight;
+    this.render();
+  }
+
+  play() {
+    if (this.playing || !this.gif) return;
+    this.playing = true;
+    this.lastTime = performance.now();
+    const loop = (now) => {
+      if (!this.playing) return;
+      const frame = this.gif.frames[this.frameIndex];
+      const delay = Math.max(frame.gce.delay, 20) * this.speedMult;
+      if (now - this.lastTime >= delay) {
+        this.frameIndex = (this.frameIndex + 1) % this.gif.frames.length;
+        this._composeFrame(this.frameIndex);
+        this.render();
+        this.lastTime = now;
+      }
+      this.rafId = requestAnimationFrame(loop);
+    };
+    this.rafId = requestAnimationFrame(loop);
+  }
+
+  // 一時停止：自分のタイマーを止めるだけなので確実に止まる
+  pause() {
+    this.playing = false;
+    if (this.rafId) cancelAnimationFrame(this.rafId);
+    this.rafId = null;
+  }
+
+  // 最初のコマから再生し直す
+  restart() {
+    this.pause();
+    if (!this.gif) return;
+    this.frameIndex = 0;
+    this._restoreSnapshot = null;
+    this._composeFrame(0, true);
+    this.render();
+    this.play();
+  }
+
+  setSpeed(mult) {
+    this.speedMult = mult;
+  }
+}
+
 const SAMPLES = [
   { file:'samples/01.gif', label:'開口－閉口',               chars:['あ','ん'] },
   { file:'samples/05.gif', label:'口唇の突出－引き（う・い）', chars:['う','い'] },
@@ -279,17 +589,15 @@ document.getElementById('setPlusBtn').onclick  = () => { if(setCount<10) setCoun
 
 // ===== サンプル =====
 let sampleIndex = 0;
-const sampleImg   = document.getElementById('sampleImg');
-const sampleLabel = document.getElementById('sampleLabel');
-const setDisplay  = document.getElementById('setDisplay');
-const posText     = document.getElementById('positionText');
+const sampleCanvas = document.getElementById('sampleCanvas');
+const sampleLabel  = document.getElementById('sampleLabel');
+const setDisplay   = document.getElementById('setDisplay');
+const posText      = document.getElementById('positionText');
+const player = new GifPlayer(sampleCanvas);
 
-function loadSample(idx) {
+async function loadSample(idx) {
   sampleIndex = idx;
   const s = SAMPLES[idx];
-  // GIFアニメをリセット：srcを空にしてから再セット
-  sampleImg.src = '';
-  sampleImg.src = s.file;
   sampleLabel.textContent = s.label;
   posText.textContent     = (idx+1) + ' / ' + SAMPLES.length;
   setDisplay.textContent  = repCount + '回 × ' + setCount + 'セット';
@@ -300,6 +608,13 @@ function loadSample(idx) {
   // 発音文字表示をリセットして開始
   updateCharDisplay();
   startCharCycle();
+  try {
+    await player.load(s.file);
+    player.setSpeed(SPEEDS[speedIdx].mult);
+    player.play();
+  } catch (e) {
+    console.error('GIFの読み込みに失敗しました:', s.file, e);
+  }
 }
 
 document.getElementById('prevBtn').onclick = () => loadSample((sampleIndex-1+SAMPLES.length)%SAMPLES.length);
@@ -354,114 +669,52 @@ function stopCharCycle() {
   if (charTimer) { clearInterval(charTimer); charTimer = null; }
 }
 
-// ===== GIF 一時停止 =====
-// ブラウザのGIFアニメは直接止められないため
-// 一時停止時：imgをhideしてcanvasに静止画を描画
-// 再生時：canvasをhideしてimgを表示
+// ===== GIF 一時停止・スロー再生 =====
+// これまでは<img>のGIF自動再生をブラウザに任せていたが、
+// ・一時停止させる方法が「隠して静止画に差し替える」しかない
+// ・iPad Safariは非表示/隠れた画像のGIFアニメーションを止めてしまう
+// という2つの理由で、正確な一時停止・スロー再生ができなかった。
+// そこで、GIFファイルの中身を自分で解析し（decodeGif関数）、
+// 1コマずつ自分のタイマーでcanvasに描画するプレーヤー(GifPlayer)を使う。
+// こうすればブラウザの裏側の挙動に一切左右されない。
 let gifPaused = false;
 const gifPlayBtn = document.getElementById('gifPlayBtn');
 const speedLabel = document.getElementById('speedLabel');
 
-// 一時停止用canvas（sampleImageAreaに重ねる。samplePane全体ではなく画像エリアだけ覆う）
-const pauseCanvas = document.createElement('canvas');
-pauseCanvas.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;background:#05070a;display:none;';
-document.getElementById('sampleImageArea').appendChild(pauseCanvas);
-const pCtx = pauseCanvas.getContext('2d');
-
-// ===== canvasに縦横比を保って描画する共通関数 =====
-// SafariはCSSのobject-fit:containを<canvas>には適用してくれないため
-// （<img>には効くが<canvas>には効かないSafari側の制限）、
-// 「枠の中に収まるサイズ・位置」をJavaScript側で自分で計算して描画する。
-//   ctx    : 描画先のcanvasの2Dコンテキスト
-//   canvas : 描画先のcanvas要素（枠と同じピクセルサイズにしておく）
-//   img    : 描画元の画像（sampleImg）
-function drawImageContain(ctx, canvas, img) {
-  const iw = img.naturalWidth, ih = img.naturalHeight;
-  if (!iw || !ih) return; // 画像がまだ読み込まれていない場合は何もしない
-  const cw = canvas.width, ch = canvas.height;
-  const scale = Math.min(cw / iw, ch / ih);
-  const dw = iw * scale, dh = ih * scale;
-  const dx = (cw - dw) / 2, dy = (ch - dh) / 2;
-  ctx.fillStyle = '#05070a';
-  ctx.fillRect(0, 0, cw, ch);
-  ctx.drawImage(img, dx, dy, dw, dh);
-}
-
 gifPlayBtn.onclick = () => {
   if (!gifPaused) {
-    // 一時停止：imgの現在フレームをcanvasに焼き付けて、canvasで画像の上を覆う
-    // ※ imgはvisibility:hiddenにしない。iPadのSafariは「非表示の画像」の
-    //   GIFアニメーションを止めてしまうため、隠すと裏で再生されなくなる。
-    //   imgは裏で表示したまま動かし続け、canvasを上に重ねて見た目だけ隠す。
+    // 一時停止：自分のタイマーを止めるだけなので確実に止まる
     gifPaused = true;
-    pauseCanvas.width  = sampleImg.clientWidth;
-    pauseCanvas.height = sampleImg.clientHeight;
-    drawImageContain(pCtx, pauseCanvas, sampleImg);
-    pauseCanvas.style.display = 'block';
+    player.pause();
     gifPlayBtn.classList.remove('active');
     gifPlayBtn.textContent = '▶';
-    // 文字の切り替えも止める
     stopCharCycle();
   } else {
-    // 再生再開
+    // 再生再開：最初のコマから再生し直す
     gifPaused = false;
-    pauseCanvas.style.display = 'none';
-    // GIFを最初から再生
-    const src = sampleImg.src;
-    sampleImg.src = '';
-    sampleImg.src = src;
+    player.restart();
     gifPlayBtn.classList.add('active');
     gifPlayBtn.textContent = '⏸';
-    // 文字表示も最初から再開
     updateCharDisplay();
     startCharCycle();
   }
 };
 
 // ===== GIF 速度 =====
-// GIFの速度はCSSアニメで直接変えられないため、
-// imgは裏で普通に再生させたまま、一定間隔でcanvasに焼き付けて
-// その上に不透明に重ねることでスロー再生に見せる。
-// （imgをvisibility:hiddenで隠すと、iPad SafariがそのGIFの
-// 　アニメーションそのものを止めてしまうため、絶対に隠さない）
+// 各コマの表示時間(GIFファイルに記録された実際のディレイ)に
+// 倍率をかけることで、正確なスロー再生を実現する。
 const SPEEDS = [
-  { label:'遅い×2',  interval:200 },
-  { label:'ゆっくり', interval:120 },
-  { label:'標準',    interval:0   },
+  { label:'遅い×3',  mult:3 },
+  { label:'ゆっくり×2', mult:2 },
+  { label:'標準',    mult:1 },
 ];
 let speedIdx = 2;
-let slowTimer = null;
-const slowCanvas = document.createElement('canvas');
-slowCanvas.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;background:#05070a;display:none;';
-document.getElementById('sampleImageArea').appendChild(slowCanvas);
-const sCtx = slowCanvas.getContext('2d');
 
 function applySpeed() {
   speedLabel.textContent = SPEEDS[speedIdx].label;
-  if (slowTimer) { clearInterval(slowTimer); slowTimer=null; }
-
-  const interval = SPEEDS[speedIdx].interval;
-  if (interval > 0 && !gifPaused) {
-    // スロー：canvasの解像度を枠のピクセルサイズに合わせ、
-    // drawImageContain()で縦横比を保ちながら一定間隔で焼き付ける。
-    // imgは裏でそのまま動き続けている（見た目はcanvasが覆っている）。
-    slowCanvas.style.display = 'block';
-    slowCanvas.width  = sampleImg.clientWidth;
-    slowCanvas.height = sampleImg.clientHeight;
-    slowTimer = setInterval(() => {
-      if (!gifPaused) {
-        drawImageContain(sCtx, slowCanvas, sampleImg);
-      }
-    }, interval);
-  } else {
-    // 標準・速い：slowCanvasを非表示にして、裏で動いているimgをそのまま見せる
-    slowCanvas.style.display = 'none';
-  }
-
+  player.setSpeed(SPEEDS[speedIdx].mult);
   // 速度が変わったら、文字の切り替え間隔も合わせて更新
-  if (!gifPaused) {
-    startCharCycle();
-  }
+  if (!gifPaused) startCharCycle();
 }
 
 // 🐢 押すたびに 標準→ゆっくり→遅い×2→標準 とトグル
@@ -510,23 +763,9 @@ divider.addEventListener('pointermove', e => {
   }
   updateLayout();
 });
-divider.addEventListener('pointerup',    () => { isDragging = false; refreshFrozenCanvases(); });
+divider.addEventListener('pointerup',    () => { isDragging = false; player.resize(); });
 divider.addEventListener('pointercancel',() => { isDragging = false; });
-window.addEventListener('resize', () => { updateLayout(); refreshFrozenCanvases(); });
-
-// 画面回転や分割位置の変更で枠のサイズが変わったとき、
-// 一時停止中・スロー再生中のcanvasも新しいサイズに合わせて描き直す
-function refreshFrozenCanvases() {
-  if (gifPaused) {
-    pauseCanvas.width  = sampleImg.clientWidth;
-    pauseCanvas.height = sampleImg.clientHeight;
-    drawImageContain(pCtx, pauseCanvas, sampleImg);
-  } else if (SPEEDS[speedIdx].interval > 0) {
-    slowCanvas.width  = sampleImg.clientWidth;
-    slowCanvas.height = sampleImg.clientHeight;
-    drawImageContain(sCtx, slowCanvas, sampleImg);
-  }
-}
+window.addEventListener('resize', () => { updateLayout(); player.resize(); });
 
 // ===== カメラ =====
 const startScreen  = document.getElementById('start-screen');
@@ -546,7 +785,8 @@ function showScreen(name) {
 async function startCamera() {
   stopCamera();
   speedIdx = 2;
-  loadSample(0);
+  applySpeed();
+  await loadSample(0);
   showScreen('camera');
   requestAnimationFrame(updateLayout);
   try {
@@ -559,7 +799,11 @@ async function startCamera() {
 
 function stopCamera() {
   if (currentStream) { currentStream.getTracks().forEach(t=>t.stop()); currentStream=null; }
-  if (slowTimer)     { clearInterval(slowTimer); slowTimer=null; }
+  // 一時停止・スロー再生の状態を確実にリセットしておく。
+  // ここをリセットし忘れると、「終了」→もう一度「カメラを起動」した際に
+  // 前回の一時停止画面や遅い速度設定が残ってしまうバグになる。
+  gifPaused = false;
+  player.pause();
   stopCharCycle();
 }
 
