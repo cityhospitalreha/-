@@ -532,7 +532,11 @@ class GifPlayer {
     const loop = (now) => {
       if (!this.playing) return;
       const frame = this.gif.frames[this.frameIndex];
-      const delay = Math.max(frame.gce.delay, 20) * this.speedMult;
+      // GIFファイル側の表示時間(delay)が極端に短い(0など)場合、
+      // 多くのブラウザは慣習的に100msとして扱う。ここも同じルールに合わせる。
+      const rawDelay = frame.gce.delay;
+      const baseDelay = rawDelay < 20 ? 100 : rawDelay;
+      const delay = baseDelay * this.speedMult;
       if (now - this.lastTime >= delay) {
         this.frameIndex = (this.frameIndex + 1) % this.gif.frames.length;
         this._composeFrame(this.frameIndex);
@@ -576,6 +580,8 @@ const SAMPLES = [
   { file:'samples/06.gif', label:'舌の上下' },
   { file:'samples/10.gif', label:'舌の運動（一周・時計回り）' },
   { file:'samples/11.gif', label:'舌の運動（一周・反時計回り）' },
+  { file:'samples/12.gif', label:'頬のふくらませ運動' },
+  { file:'samples/13.gif', label:'口唇・頬の運動' },
 ];
 
 // ===== 設定 =====
