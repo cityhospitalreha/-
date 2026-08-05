@@ -575,13 +575,13 @@ const SAMPLES = [
   { file:'samples/01.gif', label:'開口－閉口',               chars:['あ','ん'] },
   { file:'samples/05.gif', label:'口唇の突出－引き（う・い）', chars:['う','い'] },
   { file:'samples/04.gif', label:'口唇の運動（あ・お・う）',   chars:['あ','お','う'] },
+  { file:'samples/12.gif', label:'両頬の膨らませ' },
+  { file:'samples/13.gif', label:'左右頬の膨らませ' },
   { file:'samples/02.gif', label:'舌の突出－引き' },
   { file:'samples/08.gif', label:'舌の左右' },
   { file:'samples/06.gif', label:'舌の上下' },
   { file:'samples/10.gif', label:'舌の運動（一周・時計回り）' },
   { file:'samples/11.gif', label:'舌の運動（一周・反時計回り）' },
-  { file:'samples/12.gif', label:'両頬の膨らませ' },
-  { file:'samples/13.gif', label:'左右頬の膨らませ' },
 ];
 
 // ===== 設定 =====
@@ -644,8 +644,8 @@ let charTimer = null;
 // charInterval に個別の数値を指定すると、そちらが優先される。
 const CHAR_BASE_INTERVAL = 700;
 
-// 🐢ボタンの speedIdx（0=遅い×2, 1=ゆっくり, 2=標準）に対応した倍率。
-const CHAR_SPEED_MULT = [3, 2, 1];
+// 🐢ボタンの speedIdx（0=ゆっくり, 1=標準）に対応した倍率。
+const CHAR_SPEED_MULT = [2, 1];
 
 function currentCharInterval() {
   const base = SAMPLES[sampleIndex].charInterval || CHAR_BASE_INTERVAL;
@@ -713,11 +713,10 @@ gifPlayBtn.onclick = () => {
 // 各コマの表示時間(GIFファイルに記録された実際のディレイ)に
 // 倍率をかけることで、正確なスロー再生を実現する。
 const SPEEDS = [
-  { label:'遅い×3',  mult:3 },
-  { label:'ゆっくり×2', mult:2 },
+  { label:'ゆっくり', mult:2 },
   { label:'標準',    mult:1 },
 ];
-let speedIdx = 2;
+let speedIdx = 1;
 
 function applySpeed() {
   speedLabel.textContent = SPEEDS[speedIdx].label;
@@ -793,7 +792,7 @@ function showScreen(name) {
 
 async function startCamera() {
   stopCamera();
-  speedIdx = 2;
+  speedIdx = 1;
   applySpeed();
   showScreen('camera');
   requestAnimationFrame(updateLayout);
