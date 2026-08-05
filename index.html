@@ -108,7 +108,7 @@
     min-height:96px; padding:8px 12px;
     background:#12171a; border-top:1px solid rgba(255,255,255,.08);
   }
-  #charBar.hidden { display:none; }
+  #charBar.hidden { visibility:hidden; }
   #charText {
     font-size:clamp(48px, 13vw, 96px); font-weight:800; color:#6EE7DE;
     line-height:1; letter-spacing:.03em;
@@ -580,8 +580,8 @@ const SAMPLES = [
   { file:'samples/06.gif', label:'舌の上下' },
   { file:'samples/10.gif', label:'舌の運動（一周・時計回り）' },
   { file:'samples/11.gif', label:'舌の運動（一周・反時計回り）' },
-  { file:'samples/12.gif', label:'頬のふくらませ運動' },
-  { file:'samples/13.gif', label:'口唇・頬の運動' },
+  { file:'samples/12.gif', label:'両頬の膨らませ' },
+  { file:'samples/13.gif', label:'左右頬の膨らませ' },
 ];
 
 // ===== 設定 =====
@@ -607,17 +607,20 @@ async function loadSample(idx) {
   sampleLabel.textContent = s.label;
   posText.textContent     = (idx+1) + ' / ' + SAMPLES.length;
   setDisplay.textContent  = repCount + '回 × ' + setCount + 'セット';
-  // 再生中状態に戻す
   gifPaused = false;
   gifPlayBtn.classList.add('active');
   gifPlayBtn.textContent = '⏸';
-  // 発音文字表示をリセットして開始
-  updateCharDisplay();
-  startCharCycle();
+  // GIFファイルの読み込み・解析には数十〜数百msかかるため、
+  // その間は文字の切り替えタイマーを止めておく。
+  // （先に文字だけ動かし始めると、GIFの再生開始が遅れて常にズレて見える）
+  stopCharCycle();
   try {
     await player.load(s.file);
     player.setSpeed(SPEEDS[speedIdx].mult);
     player.play();
+    // GIFの再生を開始したのと同じタイミングで文字も開始する
+    updateCharDisplay();
+    startCharCycle();
   } catch (e) {
     console.error('GIFの読み込みに失敗しました:', s.file, e);
   }
@@ -792,14 +795,18 @@ async function startCamera() {
   stopCamera();
   speedIdx = 2;
   applySpeed();
-  await loadSample(0);
   showScreen('camera');
   requestAnimationFrame(updateLayout);
   try {
+    // カメラの許可ダイアログが表示されている間はGIF・文字のタイマーを動かさない。
+    // （許可待ちの間はブラウザがタイマー処理を一時止めることがあり、
+    // 　そのままGIFと文字を先に動かし始めていると、許可後の再開時に
+    // 　両者がズレて見えることがあるため、許可が済んでから再生を始める）
     const stream = await navigator.mediaDevices.getUserMedia({ video:{ facingMode:'user' }, audio:false });
     currentStream = stream;
     video.srcObject = stream;
     video.classList.add('mirrored');
+    await loadSample(0);
   } catch(err) { showError(err); }
 }
 
