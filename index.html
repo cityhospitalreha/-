@@ -132,14 +132,25 @@
   /* 前へ・次へ：左下 */
   #sampleNav {
     position:absolute; bottom:8px; left:8px;
-    display:flex; align-items:center; gap:6px; z-index:2;
+    display:flex; align-items:center; gap:8px; z-index:2;
   }
   .nav-btn {
     background:rgba(0,0,0,.5); backdrop-filter:blur(6px);
     border:1px solid rgba(255,255,255,.15); color:#F5F5F0;
-    font-size:12px; padding:6px 12px; border-radius:8px; cursor:pointer;
+    font-size:14px; padding:9px 14px; border-radius:10px; cursor:pointer;
   }
-  #positionText { font-size:11px; color:rgba(245,245,240,.6); }
+  /* 次へボタン：Claudeのブランドカラーに近い、落ち着いたテラコッタ系。
+     医療アプリとして安っぽい原色を避け、彩度を抑えて信頼感のある色にしている。 */
+  .nav-btn.nav-next {
+    background:linear-gradient(160deg,#C77B58,#B2673F);
+    border:none; color:#FBF3EA;
+    font-weight:600; font-size:14px; letter-spacing:.01em;
+    padding:10px 16px;
+    box-shadow:0 1px 2px rgba(0,0,0,.2), 0 4px 14px rgba(178,103,63,.3),
+               inset 0 1px 0 rgba(255,255,255,.18);
+  }
+  .nav-btn.nav-next:active { transform:scale(.97); }
+  #positionText { font-size:12px; color:rgba(245,245,240,.7); font-weight:600; }
 
   /* カメラペイン */
   video#video {
@@ -222,7 +233,7 @@
           <div id="sampleNav">
             <button class="nav-btn" id="prevBtn">◀ 前へ</button>
             <span id="positionText">1 / 8</span>
-            <button class="nav-btn" id="nextBtn">次へ ▶</button>
+            <button class="nav-btn nav-next" id="nextBtn">次へ ▶</button>
           </div>
         </div>
 
@@ -572,9 +583,10 @@ class GifPlayer {
 }
 
 const SAMPLES = [
-  { file:'samples/16.gif', label:'頸部のストレッチ　前－後ろ（前4秒・後ろ4秒）' },
-  { file:'samples/14.gif', label:'頸部のストレッチ　右－左（右4秒・左4秒）' },
-  { file:'samples/15.gif', label:'頸部のストレッチ　右回旋－左回旋（右4秒・左4秒）' },
+  { file:'samples/16.gif', label:'頸部のストレッチ　前屈－正面－後屈（正面向き／前5秒・後5秒）', countdown:true },
+  { file:'samples/17.gif', label:'頸部のストレッチ　前屈－正面－後屈（真横／前5秒・後5秒）', countdown:true },
+  { file:'samples/14.gif', label:'頸部のストレッチ　右－左（右5秒・左5秒）', countdown:true },
+  { file:'samples/15.gif', label:'頸部のストレッチ　右回旋－左回旋（右5秒・左5秒）', countdown:true },
   { file:'samples/01.gif', label:'開口－閉口',               chars:['あ','ん'] },
   { file:'samples/05.gif', label:'口唇の突出－引き（う・い）', chars:['う','い'] },
   { file:'samples/04.gif', label:'口唇の運動（あ・お・う）',   chars:['あ','お','う'] },
@@ -656,7 +668,13 @@ function currentCharInterval() {
 }
 
 function updateCharDisplay() {
-  const chars = SAMPLES[sampleIndex].chars;
+  const s = SAMPLES[sampleIndex];
+  if (s.countdown) {
+    charBar.classList.remove('hidden');
+    updateCountdownDisplay();
+    return;
+  }
+  const chars = s.chars;
   if (!chars || chars.length === 0) {
     charBar.classList.add('hidden');
     charText.textContent = '';
@@ -669,12 +687,40 @@ function updateCharDisplay() {
 
 function startCharCycle() {
   stopCharCycle();
-  const chars = SAMPLES[sampleIndex].chars;
+  const s = SAMPLES[sampleIndex];
+  if (s.countdown) {
+    // ストレッチ種目：文字を一定間隔で切り替えるのではなく、
+    // GIFの今のコマが残り何秒かを毎フレーム計算して表示する
+    charTimer = setInterval(updateCountdownDisplay, 100);
+    return;
+  }
+  const chars = s.chars;
   if (!chars || chars.length === 0) return;
   charTimer = setInterval(() => {
     charIdx = (charIdx + 1) % chars.length;
     charText.textContent = chars[charIdx];
   }, currentCharInterval());
+}
+
+// 今再生中のコマが、残り何秒で切り替わるかを計算して表示する。
+// GifPlayerが内部で使っている遅延時間の計算（極端に短い/0の場合は100msとみなす）
+// と同じルールをここでも使い、実際の見た目とズレないようにしている。
+function updateCountdownDisplay() {
+  if (!player.gif) { charText.textContent = ''; return; }
+  const frame = player.gif.frames[player.frameIndex];
+  const rawDelay = frame.gce.delay;
+  const baseDelay = rawDelay < 20 ? 100 : rawDelay;
+  // 正面(短い1秒のつなぎコマ)の間は数字を出さない。
+  // 保持コマ(1.5秒より長いコマ)の時だけカウントダウンを表示する。
+  if (baseDelay <= 1500) {
+    charText.textContent = '';
+    return;
+  }
+  const delay = baseDelay * player.speedMult;
+  const elapsed = player.playing ? (performance.now() - player.lastTime) : 0;
+  const remaining = Math.max(0, delay - elapsed);
+  const sec = Math.ceil(remaining / 1000);
+  charText.textContent = sec > 0 ? String(sec) : '';
 }
 
 function stopCharCycle() {
