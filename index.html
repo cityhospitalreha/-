@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="theme-color" content="#0b0e10">
+<meta name="theme-color" content="#FAF6F0">
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png">
@@ -13,7 +13,7 @@
 <style>
   * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
   html, body {
-    height:100%; background:#0b0e10; color:#F5F5F0;
+    height:100%; background:#FAF6F0; color:#2E2620;
     font-family:-apple-system, BlinkMacSystemFont, "Hiragino Sans", "Hiragino Kaku Gothic ProN", sans-serif;
     overflow:hidden; -webkit-user-select:none; user-select:none;
   }
@@ -24,61 +24,61 @@
   #start-screen, #error-screen {
     position:absolute; inset:0; display:flex; flex-direction:column;
     align-items:center; justify-content:center; gap:18px; padding:32px;
-    text-align:center; background:radial-gradient(circle at 50% 30%, #161b1e, #0b0e10);
+    text-align:center; background:radial-gradient(circle at 50% 30%, #FFFFFF, #F3ECE2);
   }
-  .app-title { font-size:28px; font-weight:600; letter-spacing:.02em; }
-  .app-desc  { font-size:15px; line-height:1.7; color:rgba(245,245,240,.65); max-width:320px; }
-  .privacy-note { font-size:12px; color:rgba(245,245,240,.4); max-width:280px; line-height:1.6; }
+  .app-title { font-size:28px; font-weight:600; letter-spacing:.02em; color:#2E2620; }
+  .app-desc  { font-size:15px; line-height:1.7; color:rgba(46,38,32,.65); max-width:320px; }
+  .privacy-note { font-size:12px; color:rgba(46,38,32,.45); max-width:280px; line-height:1.6; }
 
   .setting-box {
     display:flex; flex-direction:column; gap:14px;
-    background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.12);
+    background:rgba(0,0,0,.03); border:1px solid rgba(0,0,0,.1);
     border-radius:16px; padding:16px 24px; width:100%; max-width:300px;
   }
   .setting-row { display:flex; align-items:center; justify-content:space-between; gap:12px; }
-  .setting-label { font-size:14px; color:rgba(245,245,240,.8); }
+  .setting-label { font-size:14px; color:rgba(46,38,32,.8); }
   .setting-stepper { display:flex; align-items:center; gap:12px; }
   .stepper-btn {
-    background:rgba(255,255,255,.12); border:1px solid rgba(255,255,255,.2);
-    color:#F5F5F0; font-size:20px; width:36px; height:36px;
+    background:rgba(0,0,0,.05); border:1px solid rgba(0,0,0,.15);
+    color:#2E2620; font-size:20px; width:36px; height:36px;
     border-radius:8px; cursor:pointer; line-height:1;
   }
-  .stepper-val { font-size:18px; font-weight:700; color:#6EE7DE; min-width:28px; text-align:center; }
+  .stepper-val { font-size:18px; font-weight:700; color:#B2673F; min-width:28px; text-align:center; }
 
   .btn-primary {
-    background:linear-gradient(135deg,#6EE7DE,#4FC3BD); color:#06201D;
+    background:linear-gradient(135deg,#D99770,#B2673F); color:#FBF3EA;
     font-weight:600; font-size:17px; border:none; border-radius:999px;
     padding:16px 44px; min-height:52px; cursor:pointer;
-    box-shadow:0 8px 24px rgba(110,231,222,.25); transition:transform .15s;
+    box-shadow:0 8px 24px rgba(178,103,63,.25); transition:transform .15s;
   }
   .btn-primary:active { transform:scale(.96); }
 
   /* カメラ画面 */
-  #camera-screen { position:absolute; inset:0; display:flex; flex-direction:column; }
+  #camera-screen { position:absolute; inset:0; display:flex; flex-direction:column; background:#FAF6F0; }
 
   #stage {
     position:relative; flex:1; min-height:0;
     display:flex; flex-direction:column;
-    background:#000; overflow:hidden;
+    background:#EDE5D8; overflow:hidden;
   }
   @media (orientation:landscape) { #stage { flex-direction:row; } }
 
-  .pane { position:relative; min-width:0; min-height:0; overflow:hidden; background:#0b0e10; }
+  .pane { position:relative; min-width:0; min-height:0; overflow:hidden; background:#FAF6F0; }
 
   /* 境界スライダー */
   #divider {
     position:absolute; z-index:30;
-    background:rgba(110,231,222,.5);
+    background:rgba(178,103,63,.55);
     touch-action:none;
   }
 
   /* 見本ペイン：上=画像エリア、下=文字バー の縦2段構成 */
   #samplePane { display:flex; flex-direction:column; }
-  #sampleImageArea { position:relative; flex:1; min-height:0; overflow:hidden; background:#0b0e10; }
+  #sampleImageArea { position:relative; flex:1; min-height:0; overflow:hidden; background:#FAF6F0; }
 
   #sampleCanvas {
     position:absolute; inset:0; width:100%; height:100%;
-    background:#05070a;
+    background:#FFFDF9;
   }
 
   /* ラベル：左上（種目名）★大きく強調★ */
@@ -95,23 +95,25 @@
     position:absolute; top:10px; right:10px;
     background:rgba(0,0,0,.65); backdrop-filter:blur(6px);
     border-radius:12px; padding:8px 16px;
-    font-size:17px; font-weight:800; color:#6EE7DE;
+    font-size:17px; font-weight:800; color:#D99770;
     line-height:1.4; pointer-events:none; z-index:2;
     box-shadow:0 2px 8px rgba(0,0,0,.3);
   }
 
   /* 発音文字表示：画像エリアの下にある専用バー
-     顔の映像とは重ならない、独立したスペースに大きく表示する */
+     顔の映像とは重ならない、独立したスペースに大きく表示する。
+     min-heightではなく固定heightにしているのは、文字がある時とない時で
+     バーの高さが変わり、画像エリアのサイズがガタつくのを防ぐため。 */
   #charBar {
     flex:0 0 auto;
     display:flex; align-items:center; justify-content:center;
-    min-height:96px; padding:8px 12px;
-    background:#12171a; border-top:1px solid rgba(255,255,255,.08);
+    height:112px; padding:0 12px; box-sizing:border-box;
+    background:#F1E8DA; border-top:1px solid rgba(0,0,0,.07);
   }
   #charBar.hidden { visibility:hidden; }
   #charText {
-    font-size:clamp(48px, 13vw, 96px); font-weight:800; color:#6EE7DE;
-    line-height:1; letter-spacing:.03em;
+    font-size:clamp(40px, 11vw, 76px); font-weight:800; color:#B2673F;
+    line-height:1; letter-spacing:.02em;
   }
 
   /* GIF操作：右下縦 */
@@ -126,7 +128,7 @@
     color:#F5F5F0; font-size:16px; width:36px; height:36px;
     border-radius:8px; cursor:pointer;
   }
-  .gif-btn.active { background:rgba(110,231,222,.25); border-color:#6EE7DE; }
+  .gif-btn.active { background:rgba(199,123,88,.28); border-color:#D99770; }
   #speedLabel { font-size:9px; color:rgba(245,245,240,.6); }
 
   /* 前へ・次へ：左下 */
@@ -172,17 +174,17 @@
   .controls {
     display:flex; justify-content:center; gap:12px;
     padding:12px 16px calc(12px + env(safe-area-inset-bottom));
-    background:#0b0e10; border-top:1px solid rgba(255,255,255,.08);
+    background:#FAF6F0; border-top:1px solid rgba(0,0,0,.08);
   }
   .btn-control {
-    background:rgba(255,255,255,.12); border:1px solid rgba(255,255,255,.18);
-    color:#F5F5F0; font-size:14px; font-weight:500; border-radius:14px;
+    background:rgba(0,0,0,.04); border:1px solid rgba(0,0,0,.12);
+    color:#2E2620; font-size:14px; font-weight:500; border-radius:14px;
     padding:10px 18px; min-height:46px; min-width:88px; cursor:pointer;
   }
-  .btn-control.active { background:rgba(110,231,222,.22); border-color:#6EE7DE; color:#6EE7DE; }
-  .btn-control.danger { background:rgba(255,138,101,.16); border-color:rgba(255,138,101,.4); color:#FF8A65; }
+  .btn-control.active { background:rgba(178,103,63,.15); border-color:#B2673F; color:#B2673F; }
+  .btn-control.danger { background:rgba(196,68,40,.08); border-color:rgba(196,68,40,.35); color:#C44428; }
 
-  #error-screen .app-desc { color:rgba(255,200,190,.85); }
+  #error-screen .app-desc { color:#B24A38; }
 </style>
 </head>
 <body>
@@ -583,8 +585,7 @@ class GifPlayer {
 }
 
 const SAMPLES = [
-  { file:'samples/16.gif', label:'頸部のストレッチ　前屈－正面－後屈（正面向き／前5秒・後5秒）', countdown:true },
-  { file:'samples/17.gif', label:'頸部のストレッチ　前屈－正面－後屈（真横／前5秒・後5秒）', countdown:true },
+  { file:'samples/16.gif', label:'頸部のストレッチ　前屈－正面－後屈（正面・真横 同時表示／前5秒・後5秒）', countdown:true },
   { file:'samples/14.gif', label:'頸部のストレッチ　右－左（右5秒・左5秒）', countdown:true },
   { file:'samples/15.gif', label:'頸部のストレッチ　右回旋－左回旋（右5秒・左5秒）', countdown:true },
   { file:'samples/01.gif', label:'開口－閉口',               chars:['あ','ん'] },
@@ -689,9 +690,10 @@ function startCharCycle() {
   stopCharCycle();
   const s = SAMPLES[sampleIndex];
   if (s.countdown) {
-    // ストレッチ種目：文字を一定間隔で切り替えるのではなく、
-    // GIFの今のコマが残り何秒かを毎フレーム計算して表示する
-    charTimer = setInterval(updateCountdownDisplay, 100);
+    // ストレッチ種目：数字を秒ごとに切り替えるカウントダウンではなく、
+    // 「保持コマの間だけ固定で"○秒"と表示する」だけのシンプルな仕組みにする。
+    // コマが変わるたびに表示を更新すればよいので、頻繁なタイマーは不要。
+    charTimer = setInterval(updateCountdownDisplay, 200);
     return;
   }
   const chars = s.chars;
@@ -702,25 +704,21 @@ function startCharCycle() {
   }, currentCharInterval());
 }
 
-// 今再生中のコマが、残り何秒で切り替わるかを計算して表示する。
-// GifPlayerが内部で使っている遅延時間の計算（極端に短い/0の場合は100msとみなす）
-// と同じルールをここでも使い、実際の見た目とズレないようにしている。
+// 今再生中のコマが「保持コマ」（1.5秒より長いコマ）かどうかを見て、
+// そうであれば固定で「○秒」と表示する。正面などの短いつなぎコマの間は何も出さない。
+// ライブでカウントダウンさせない（数字を毎秒切り替えない）のは、
+// 表示のたびに文字幅が変わってバー内の位置がガタつくのを避けるため。
 function updateCountdownDisplay() {
   if (!player.gif) { charText.textContent = ''; return; }
   const frame = player.gif.frames[player.frameIndex];
   const rawDelay = frame.gce.delay;
   const baseDelay = rawDelay < 20 ? 100 : rawDelay;
-  // 正面(短い1秒のつなぎコマ)の間は数字を出さない。
-  // 保持コマ(1.5秒より長いコマ)の時だけカウントダウンを表示する。
   if (baseDelay <= 1500) {
     charText.textContent = '';
     return;
   }
-  const delay = baseDelay * player.speedMult;
-  const elapsed = player.playing ? (performance.now() - player.lastTime) : 0;
-  const remaining = Math.max(0, delay - elapsed);
-  const sec = Math.ceil(remaining / 1000);
-  charText.textContent = sec > 0 ? String(sec) : '';
+  const sec = Math.round(baseDelay / 1000);
+  charText.textContent = sec + '秒';
 }
 
 function stopCharCycle() {
