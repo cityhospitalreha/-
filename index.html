@@ -46,7 +46,7 @@
   .stepper-val { font-size:18px; font-weight:700; color:#B2673F; min-width:28px; text-align:center; }
 
   .btn-primary {
-    background:linear-gradient(135deg,#D99770,#B2673F); color:#FBF3EA;
+    background:linear-gradient(135deg,#C77B58,#B2673F); color:#FBF3EA;
     font-weight:600; font-size:17px; border:none; border-radius:999px;
     padding:16px 44px; min-height:52px; cursor:pointer;
     box-shadow:0 8px 24px rgba(178,103,63,.25); transition:transform .15s;
@@ -95,7 +95,7 @@
     position:absolute; top:10px; right:10px;
     background:rgba(0,0,0,.65); backdrop-filter:blur(6px);
     border-radius:12px; padding:8px 16px;
-    font-size:17px; font-weight:800; color:#D99770;
+    font-size:17px; font-weight:800; color:#C77B58;
     line-height:1.4; pointer-events:none; z-index:2;
     box-shadow:0 2px 8px rgba(0,0,0,.3);
   }
@@ -115,6 +115,12 @@
     font-size:clamp(40px, 11vw, 76px); font-weight:800; color:#B2673F;
     line-height:1; letter-spacing:.02em;
   }
+  /* ストレッチの「○秒」表示は発音文字(あ・お・う等)と違い、
+     訓練の主役ではなく補助情報なので、控えめなサイズ・色にする */
+  #charText.countdown-text {
+    font-size:26px; font-weight:600; color:rgba(46,38,32,.55);
+    letter-spacing:.04em;
+  }
 
   /* GIF操作：右下縦 */
   #gifCtrl {
@@ -128,7 +134,7 @@
     color:#F5F5F0; font-size:16px; width:36px; height:36px;
     border-radius:8px; cursor:pointer;
   }
-  .gif-btn.active { background:rgba(199,123,88,.28); border-color:#D99770; }
+  .gif-btn.active { background:rgba(199,123,88,.28); border-color:#C77B58; }
   #speedLabel { font-size:9px; color:rgba(245,245,240,.6); }
 
   /* 前へ・次へ：左下 */
@@ -526,7 +532,7 @@ class GifPlayer {
     const scale = Math.min(cw / gw, ch / gh);
     const dw = gw * scale, dh = gh * scale;
     const dx = (cw - dw) / 2, dy = (ch - dh) / 2;
-    this.ctx.fillStyle = '#05070a';
+    this.ctx.fillStyle = '#FFFDF9';
     this.ctx.fillRect(0, 0, cw, ch);
     this.ctx.drawImage(this.off, dx, dy, dw, dh);
   }
@@ -672,9 +678,11 @@ function updateCharDisplay() {
   const s = SAMPLES[sampleIndex];
   if (s.countdown) {
     charBar.classList.remove('hidden');
+    charText.classList.add('countdown-text');
     updateCountdownDisplay();
     return;
   }
+  charText.classList.remove('countdown-text');
   const chars = s.chars;
   if (!chars || chars.length === 0) {
     charBar.classList.add('hidden');
