@@ -59,7 +59,7 @@
   #stage {
     position:relative; flex:1; min-height:0;
     display:flex; flex-direction:column;
-    background:#EDE5D8; overflow:hidden;
+    background:#FAF6F0; overflow:hidden;
   }
   @media (orientation:landscape) { #stage { flex-direction:row; } }
 
@@ -237,7 +237,7 @@
         </div>
 
         <!-- 発音文字は画像の下の専用バーに表示（顔の映像には重ねない） -->
-        <div id="charBar" class="hidden">
+        <div id="charBar">
           <span id="charText"></span>
         </div>
       </div>
@@ -668,7 +668,6 @@ function currentCharInterval() {
 function updateCharDisplay() {
   const s = SAMPLES[sampleIndex];
   if (s.countdown) {
-    charBar.classList.remove('hidden');
     charText.classList.add('countdown-text');
     updateCountdownDisplay();
     return;
@@ -676,11 +675,12 @@ function updateCharDisplay() {
   charText.classList.remove('countdown-text');
   const chars = s.chars;
   if (!chars || chars.length === 0) {
-    charBar.classList.add('hidden');
+    // 文字がない種目でも、バー自体は白いまま表示し続ける（中身だけ空にする）。
+    // 以前はvisibility:hiddenでバーごと消していたが、その透けた先に
+    // ステージの背景色が見えてしまい「灰色になる」ように見える原因になっていたため。
     charText.textContent = '';
     return;
   }
-  charBar.classList.remove('hidden');
   charIdx = 0;
   charText.textContent = chars[charIdx];
 }
