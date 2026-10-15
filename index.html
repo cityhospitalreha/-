@@ -81,14 +81,36 @@
     background:#FFFDF9;
   }
 
-  /* ラベル：左上（種目名）★大きく強調★ */
+  /* ラベル：左上（種目名）★大きく・見やすく★
+     白いカードに濃い文字＋左に差し色の線。2行構成：上=運動名（大）、下=補足（小） */
   .sample-label {
-    position:absolute; top:10px; left:10px;
-    background:rgba(0,0,0,.65); padding:8px 16px;
-    border-radius:999px; font-size:16px; font-weight:700; color:#F5F5F0;
+    position:absolute; top:10px; left:10px; max-width:calc(100% - 170px);
+    background:rgba(255,255,255,.96); padding:10px 16px 10px 14px;
+    border-left:6px solid #B2673F; border-radius:12px;
     pointer-events:none; z-index:2;
-    box-shadow:0 2px 8px rgba(0,0,0,.3);
+    box-shadow:0 2px 10px rgba(46,38,32,.18);
   }
+  .sample-label .name { font-size:clamp(20px,3.4vw,28px); font-weight:800; color:#2E2620; line-height:1.3; }
+  .sample-label .detail { font-size:13px; font-weight:500; color:rgba(46,38,32,.6); line-height:1.4; margin-top:2px; }
+  .sample-label .detail:empty { display:none; }
+
+  /* 一時停止中の表示（画像の中央） */
+  #pauseBadge {
+    position:absolute; left:50%; top:50%; transform:translate(-50%,-50%);
+    background:rgba(255,255,255,.94); color:#B2673F; font-size:20px; font-weight:700;
+    padding:12px 22px; border-radius:999px; pointer-events:none; z-index:3;
+    box-shadow:0 2px 12px rgba(46,38,32,.2);
+  }
+  #pauseBadge[hidden] { display:none; }
+  #sampleCanvas { cursor:pointer; }
+
+  /* 首のストレッチ あり／なし の切り替え */
+  .seg { display:flex; border:1px solid #B2673F; border-radius:10px; overflow:hidden; }
+  .seg button {
+    background:#FFFFFF; color:#B2673F; border:none; font-size:15px; font-weight:600;
+    padding:8px 16px; min-width:64px; cursor:pointer;
+  }
+  .seg button.on { background:#B2673F; color:#FBF3EA; }
 
   /* 回数・セット：右上 ★大きく強調★ */
   #setDisplay {
@@ -122,21 +144,6 @@
     font-size:26px; font-weight:600; color:rgba(46,38,32,.55);
     letter-spacing:.04em;
   }
-
-  /* GIF操作：右下縦 */
-  #gifCtrl {
-    position:absolute; bottom:48px; right:8px;
-    display:flex; flex-direction:column; align-items:center; gap:5px;
-    background:rgba(0,0,0,.5); backdrop-filter:blur(6px);
-    border-radius:12px; padding:8px 6px; z-index:2;
-  }
-  .gif-btn {
-    background:rgba(255,255,255,.12); border:1px solid rgba(255,255,255,.15);
-    color:#F5F5F0; font-size:16px; width:36px; height:36px;
-    border-radius:8px; cursor:pointer;
-  }
-  .gif-btn.active { background:rgba(199,123,88,.28); border-color:#C77B58; }
-  #speedLabel { font-size:9px; color:rgba(245,245,240,.6); }
 
   /* 前へ・次へ：左下 */
   #sampleNav {
@@ -190,7 +197,7 @@
   <!-- スタート画面 -->
   <div id="start-screen">
     <div class="app-title">口の体操</div>
-    <div class="app-desc">カメラに自分の顔を映して、表情の練習にお使いください。</div>
+    <div class="app-desc">カメラに自分の顔を映して、口や舌、首の運動の練習にお使いください。<br>見本の画像をタップすると一時停止できます。</div>
     <div class="setting-box">
       <div class="setting-row">
         <span class="setting-label">1セットの回数</span>
@@ -208,6 +215,13 @@
           <button class="stepper-btn" id="setPlusBtn">＋</button>
         </div>
       </div>
+      <div class="setting-row">
+        <span class="setting-label">首のストレッチ</span>
+        <div class="seg" id="neckSeg">
+          <button id="neckOnBtn" class="on">入れる</button>
+          <button id="neckOffBtn">入れない</button>
+        </div>
+      </div>
     </div>
     <button id="startBtn" class="btn-primary">カメラを起動</button>
     <div class="privacy-note">映像は録画・保存されず、外部にも送信されません。</div>
@@ -223,11 +237,7 @@
           <div class="sample-label" id="sampleLabel"></div>
           <div id="setDisplay"></div>
 
-          <div id="gifCtrl">
-            <button class="gif-btn" id="gifSlowBtn">🐢</button>
-            <button class="gif-btn active" id="gifPlayBtn">⏸</button>
-            <div id="speedLabel">標準</div>
-          </div>
+          <div id="pauseBadge" hidden>⏸ 停止中（タップで再開）</div>
 
           <div id="sampleNav">
             <button class="nav-btn" id="prevBtn">◀ 前へ</button>
@@ -582,20 +592,35 @@ class GifPlayer {
 }
 
 const SAMPLES = [
-  { file:'samples/16.gif', label:'頸部のストレッチ　前屈－正面－後屈（正面・真横 同時表示／前5秒・後5秒）', countdown:true },
-  { file:'samples/14.gif', label:'頸部のストレッチ　右－左（右5秒・左5秒）', countdown:true },
-  { file:'samples/15.gif', label:'頸部のストレッチ　右回旋－左回旋（右5秒・左5秒）', countdown:true },
-  { file:'samples/01.gif', label:'開口－閉口',               chars:['あ','ん'] },
-  { file:'samples/05.gif', label:'口唇の突出－引き（う・い）', chars:['う','い'] },
-  { file:'samples/04.gif', label:'口唇の運動（あ・お・う）',   chars:['あ','お','う'] },
-  { file:'samples/12.gif', label:'両頬の膨らませ' },
-  { file:'samples/13.gif', label:'左右頬の膨らませ' },
-  { file:'samples/02.gif', label:'舌の突出－引き' },
-  { file:'samples/08.gif', label:'舌の左右' },
-  { file:'samples/06.gif', label:'舌の上下' },
-  { file:'samples/10.gif', label:'舌の運動（一周・時計回り）' },
-  { file:'samples/11.gif', label:'舌の運動（一周・反時計回り）' },
+  { file:'samples/16.gif', neck:true, countdown:true, name:'首のストレッチ①　前に倒す・後ろに倒す', detail:'正面と真横を同時に表示／前5秒・後5秒' },
+  { file:'samples/14.gif', neck:true, countdown:true, name:'首のストレッチ②　右・左に倒す', detail:'右5秒・左5秒' },
+  { file:'samples/15.gif', neck:true, countdown:true, name:'首のストレッチ③　右・左に回す', detail:'右5秒・左5秒' },
+  { file:'samples/01.gif', name:'口を大きく開ける・閉じる', detail:'「あ」「ん」', chars:['あ','ん'] },
+  { file:'samples/05.gif', name:'唇をとがらせる・横に引く', detail:'「う」「い」', chars:['う','い'] },
+  { file:'samples/04.gif', name:'唇の形を変える', detail:'「あ」「お」「う」', chars:['あ','お','う'] },
+  { file:'samples/12.gif', name:'両方の頬を膨らませる' },
+  { file:'samples/13.gif', name:'左右の頬を交互に膨らませる' },
+  { file:'samples/02.gif', name:'舌を出す・引く' },
+  { file:'samples/08.gif', name:'舌を左右に動かす' },
+  { file:'samples/06.gif', name:'舌を上下に動かす' },
+  { file:'samples/10.gif', name:'舌をぐるっと回す', detail:'時計回り' },
+  { file:'samples/11.gif', name:'舌をぐるっと回す', detail:'反時計回り' },
 ];
+
+// 首のストレッチを入れるか。入れない場合は neck:true の種目を飛ばす。
+let includeNeck = true;
+function activeList() {
+  return SAMPLES.map((_, i) => i).filter(i => includeNeck || !SAMPLES[i].neck);
+}
+const neckOnBtn  = document.getElementById('neckOnBtn');
+const neckOffBtn = document.getElementById('neckOffBtn');
+function setNeck(v) {
+  includeNeck = v;
+  neckOnBtn.classList.toggle('on', v);
+  neckOffBtn.classList.toggle('on', !v);
+}
+neckOnBtn.onclick  = () => setNeck(true);
+neckOffBtn.onclick = () => setNeck(false);
 
 // ===== 設定 =====
 let repCount = 5, setCount = 2;
@@ -617,19 +642,20 @@ const player = new GifPlayer(sampleCanvas);
 async function loadSample(idx) {
   sampleIndex = idx;
   const s = SAMPLES[idx];
-  sampleLabel.textContent = s.label;
-  posText.textContent     = (idx+1) + ' / ' + SAMPLES.length;
+  sampleLabel.innerHTML   = '<div class="name"></div><div class="detail"></div>';
+  sampleLabel.firstChild.textContent = s.name;
+  sampleLabel.lastChild.textContent  = s.detail || '';
+  const list = activeList();
+  posText.textContent     = (list.indexOf(idx)+1) + ' / ' + list.length;
   setDisplay.textContent  = repCount + '回 × ' + setCount + 'セット';
   gifPaused = false;
-  gifPlayBtn.classList.add('active');
-  gifPlayBtn.textContent = '⏸';
+  pauseBadge.hidden = true;
   // GIFファイルの読み込み・解析には数十〜数百msかかるため、
   // その間は文字の切り替えタイマーを止めておく。
   // （先に文字だけ動かし始めると、GIFの再生開始が遅れて常にズレて見える）
   stopCharCycle();
   try {
     await player.load(s.file);
-    player.setSpeed(SPEEDS[speedIdx].mult);
     player.play();
     // GIFの再生を開始したのと同じタイミングで文字も開始する
     updateCharDisplay();
@@ -639,8 +665,14 @@ async function loadSample(idx) {
   }
 }
 
-document.getElementById('prevBtn').onclick = () => loadSample((sampleIndex-1+SAMPLES.length)%SAMPLES.length);
-document.getElementById('nextBtn').onclick = () => loadSample((sampleIndex+1)%SAMPLES.length);
+document.getElementById('prevBtn').onclick = () => {
+  const l = activeList(); const k = l.indexOf(sampleIndex);
+  loadSample(l[(k-1+l.length)%l.length]);
+};
+document.getElementById('nextBtn').onclick = () => {
+  const l = activeList(); const k = l.indexOf(sampleIndex);
+  loadSample(l[(k+1)%l.length]);
+};
 
 // ===== 発音文字の大きな表示 =====
 // SAMPLES[].chars に設定した文字（例：['あ','ん']）を
@@ -657,12 +689,9 @@ let charTimer = null;
 // charInterval に個別の数値を指定すると、そちらが優先される。
 const CHAR_BASE_INTERVAL = 700;
 
-// 🐢ボタンの speedIdx（0=ゆっくり, 1=標準）に対応した倍率。
-const CHAR_SPEED_MULT = [2, 1];
-
 function currentCharInterval() {
   const base = SAMPLES[sampleIndex].charInterval || CHAR_BASE_INTERVAL;
-  return base * CHAR_SPEED_MULT[speedIdx];
+  return base;
 }
 
 function updateCharDisplay() {
@@ -733,49 +762,25 @@ function stopCharCycle() {
 // 1コマずつ自分のタイマーでcanvasに描画するプレーヤー(GifPlayer)を使う。
 // こうすればブラウザの裏側の挙動に一切左右されない。
 let gifPaused = false;
-const gifPlayBtn = document.getElementById('gifPlayBtn');
-const speedLabel = document.getElementById('speedLabel');
+const pauseBadge = document.getElementById('pauseBadge');
 
-gifPlayBtn.onclick = () => {
+// 見本の画像をタップするたびに 一時停止 ⇄ 再開 を切り替える
+function togglePause() {
+  if (!player.gif) return;
   if (!gifPaused) {
-    // 一時停止：自分のタイマーを止めるだけなので確実に止まる
     gifPaused = true;
-    player.pause();
-    gifPlayBtn.classList.remove('active');
-    gifPlayBtn.textContent = '▶';
+    player.pause();           // 自分のタイマーを止めるだけなので確実に止まる
     stopCharCycle();
+    pauseBadge.hidden = false;
   } else {
-    // 再生再開：最初のコマから再生し直す
     gifPaused = false;
-    player.restart();
-    gifPlayBtn.classList.add('active');
-    gifPlayBtn.textContent = '⏸';
+    player.restart();         // 最初のコマから再生し直す
+    pauseBadge.hidden = true;
     updateCharDisplay();
     startCharCycle();
   }
-};
-
-// ===== GIF 速度 =====
-// 各コマの表示時間(GIFファイルに記録された実際のディレイ)に
-// 倍率をかけることで、正確なスロー再生を実現する。
-const SPEEDS = [
-  { label:'ゆっくり', mult:2 },
-  { label:'標準',    mult:1 },
-];
-let speedIdx = 1;
-
-function applySpeed() {
-  speedLabel.textContent = SPEEDS[speedIdx].label;
-  player.setSpeed(SPEEDS[speedIdx].mult);
-  // 速度が変わったら、文字の切り替え間隔も合わせて更新
-  if (!gifPaused) startCharCycle();
 }
-
-// 🐢 押すたびに 標準→ゆっくり→遅い×2→標準 とトグル
-document.getElementById('gifSlowBtn').onclick = () => {
-  speedIdx = (speedIdx - 1 + SPEEDS.length) % SPEEDS.length;
-  applySpeed();
-};
+sampleCanvas.addEventListener('click', togglePause);
 
 // ===== 境界スライダー =====
 const stage      = document.getElementById('stage');
@@ -838,8 +843,6 @@ function showScreen(name) {
 
 async function startCamera() {
   stopCamera();
-  speedIdx = 1;
-  applySpeed();
   showScreen('camera');
   requestAnimationFrame(updateLayout);
   try {
@@ -851,7 +854,7 @@ async function startCamera() {
     currentStream = stream;
     video.srcObject = stream;
     video.classList.add('mirrored');
-    await loadSample(0);
+    await loadSample(activeList()[0]);
   } catch(err) { showError(err); }
 }
 
@@ -861,6 +864,7 @@ function stopCamera() {
   // ここをリセットし忘れると、「終了」→もう一度「カメラを起動」した際に
   // 前回の一時停止画面や遅い速度設定が残ってしまうバグになる。
   gifPaused = false;
+  pauseBadge.hidden = true;
   player.pause();
   stopCharCycle();
 }
