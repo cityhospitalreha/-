@@ -81,18 +81,19 @@
     background:#FFFDF9;
   }
 
-  /* ラベル：左上（種目名）★大きく・見やすく★
-     白いカードに濃い文字＋左に差し色の線。2行構成：上=運動名（大）、下=補足（小） */
-  .sample-label {
-    position:absolute; top:10px; left:10px; max-width:calc(100% - 170px);
-    background:rgba(255,255,255,.96); padding:10px 16px 10px 14px;
-    border-left:6px solid #B2673F; border-radius:12px;
-    pointer-events:none; z-index:2;
-    box-shadow:0 2px 10px rgba(46,38,32,.18);
+  /* 運動名バー：画像の「上」の専用1行バー（顔の映像には一切重ならない）。
+     高さ固定なので、名前が変わっても画像エリアの大きさは変わらない。 */
+  #labelBar {
+    flex:0 0 auto; height:40px; box-sizing:border-box;
+    display:flex; align-items:center; justify-content:space-between; gap:12px;
+    padding:0 14px; background:#FFFFFF;
+    border-left:5px solid #B2673F;
   }
-  .sample-label .name { font-size:clamp(20px,3.4vw,28px); font-weight:800; color:#2E2620; line-height:1.3; }
-  .sample-label .detail { font-size:13px; font-weight:500; color:rgba(46,38,32,.6); line-height:1.4; margin-top:2px; }
+  .sample-label { flex:1; min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .sample-label .name { display:inline; font-size:17px; font-weight:800; color:#2E2620; }
+  .sample-label .detail { display:inline; font-size:13px; font-weight:500; color:rgba(46,38,32,.55); margin-left:10px; }
   .sample-label .detail:empty { display:none; }
+  #setDisplay { flex:none; font-size:14px; font-weight:700; color:#B2673F; white-space:nowrap; }
 
   /* 一時停止中の表示（画像の中央） */
   #pauseBadge {
@@ -105,12 +106,13 @@
   #sampleCanvas { cursor:pointer; }
 
   /* 首のストレッチ あり／なし の切り替え */
-  .seg { display:flex; border:1px solid #B2673F; border-radius:10px; overflow:hidden; }
+  .seg { display:flex; background:#E9E3DA; border-radius:12px; padding:3px; gap:3px; }
   .seg button {
-    background:#FFFFFF; color:#B2673F; border:none; font-size:15px; font-weight:600;
-    padding:8px 16px; min-width:64px; cursor:pointer;
+    background:transparent; color:rgba(46,38,32,.5); border:none; font-size:15px; font-weight:600;
+    padding:9px 16px; min-width:78px; border-radius:9px; cursor:pointer;
   }
-  .seg button.on { background:#B2673F; color:#FBF3EA; }
+  .seg button.on { background:#B2673F; color:#FFFFFF; box-shadow:0 1px 4px rgba(46,38,32,.25); }
+  .seg button.on::before { content:"✓ "; }
 
   /* 回数・セット：右上 ★大きく強調★ */
   #setDisplay {
@@ -232,10 +234,13 @@
     <div id="stage">
 
       <div class="pane" id="samplePane">
-        <div id="sampleImageArea">
-          <canvas id="sampleCanvas"></canvas>
+        <div id="labelBar">
           <div class="sample-label" id="sampleLabel"></div>
           <div id="setDisplay"></div>
+        </div>
+
+        <div id="sampleImageArea">
+          <canvas id="sampleCanvas"></canvas>
 
           <div id="pauseBadge" hidden>⏸ 停止中（タップで再開）</div>
 
@@ -592,7 +597,7 @@ class GifPlayer {
 }
 
 const SAMPLES = [
-  { file:'samples/16.gif', neck:true, countdown:true, name:'首のストレッチ①　前に倒す・後ろに倒す', detail:'正面と真横を同時に表示／前5秒・後5秒' },
+  { file:'samples/16.gif', neck:true, countdown:true, name:'首のストレッチ①　前に倒す・後ろに倒す', detail:'前5秒・後5秒（正面・真横）' },
   { file:'samples/14.gif', neck:true, countdown:true, name:'首のストレッチ②　右・左に倒す', detail:'右5秒・左5秒' },
   { file:'samples/15.gif', neck:true, countdown:true, name:'首のストレッチ③　右・左に回す', detail:'右5秒・左5秒' },
   { file:'samples/01.gif', name:'口を大きく開ける・閉じる', detail:'「あ」「ん」', chars:['あ','ん'] },
